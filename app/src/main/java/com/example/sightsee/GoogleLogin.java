@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
@@ -116,19 +117,6 @@ public class GoogleLogin extends AppCompatActivity implements View.OnClickListen
         }
     }
 
-//    private void handleSignInResult(Task<GoogleSignInAccount> completedTask) {
-//        try {
-//            GoogleSignInAccount account = completedTask.getResult(ApiException.class);
-//
-//            // Signed in successfully, show authenticated UI.
-//            updateUI(account);
-//        } catch (ApiException e) {
-//            // The ApiException status code indicates the detailed failure reason.
-//            // Please refer to the GoogleSignInStatusCodes class reference for more information.
-//            Log.w("error", "signInResult:failed code=" + e.getStatusCode());
-//            updateUI(null);
-//        }
-//    }
 
     private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
         Log.d("firebase_login_attempt", "firebaseAuthWithGoogle:" + acct.getId());
@@ -162,9 +150,15 @@ public class GoogleLogin extends AppCompatActivity implements View.OnClickListen
 //            mDetailTextView.setText(getString(R.string.firebase_status_fmt, user.getUid()));
 
             findViewById(R.id.sign_in_button).setVisibility(View.GONE);
+            Intent i = new Intent(getApplicationContext(), MapsActivity.class);
+            startActivity(i);
+            Toast.makeText(getApplicationContext(), "Logged in successfully!", Toast.LENGTH_SHORT).show();
 //            findViewById(R.id.sign_out_and_disconnect).setVisibility(View.VISIBLE);
         }
-//        else {
+        else {
+            Toast.makeText(getApplicationContext(), "Not Logged In", Toast.LENGTH_SHORT).show();
+
+        }
 //            mStatusTextView.setText(R.string.signed_out);
 //            mDetailTextView.setText(null);
 //

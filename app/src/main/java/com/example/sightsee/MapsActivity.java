@@ -28,10 +28,13 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.maps.GeoApiContext;
 import com.kishan.askpermission.AskPermission;
 import com.kishan.askpermission.ErrorCallback;
 import com.kishan.askpermission.PermissionCallback;
 import com.kishan.askpermission.PermissionInterface;
+
+import java.util.concurrent.TimeUnit;
 
 
 public class MapsActivity extends FragmentActivity
@@ -42,22 +45,18 @@ public class MapsActivity extends FragmentActivity
     private GoogleMap mMap;
     private LocationManager locationManager;
 
-    private static final int REQUEST_PERMISSIONS = 20;
+//    private GeoApiContext getGeoContext() {
+//        GeoApiContext geoApiContext = new GeoApiContext();
+//        return geoApiContext.setQueryRateLimit(3)                .setApiKey(getString(R.string.directionsApiKey))                .setConnectTimeout(1, TimeUnit.SECONDS)                .setReadTimeout(1, TimeUnit.SECONDS)                .setWriteTimeout(1, TimeUnit.SECONDS);
+//    }
 
-//    private static final int REQUEST_LOCATION = 234;
+    private static final int REQUEST_PERMISSIONS = 20;
 
     private FusedLocationProviderClient mFusedLocationProviderClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-//        mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(getActivity());
-//        setContentView(R.layout.activity_maps);
-//
-//        SupportMapFragment mMap =
-//                (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
-//        mMap.getMapAsync(this);
 
         reqPermission();
     }
