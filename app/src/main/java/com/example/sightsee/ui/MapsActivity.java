@@ -9,11 +9,13 @@ import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -27,7 +29,10 @@ import com.example.sightsee.utils.SearchDirection;
 import com.example.sightsee.utils.SearchDirectionListener;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
+import com.google.android.gms.common.GooglePlayServicesRepairableException;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.LocationListener;
 
 import com.google.android.gms.location.LocationRequest;
@@ -45,8 +50,18 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
+import com.google.android.libraries.places.api.Places;
+import com.google.android.libraries.places.api.model.Place;
+import com.google.android.libraries.places.api.net.PlacesClient;
+import com.google.android.libraries.places.widget.Autocomplete;
+import com.google.android.libraries.places.widget.AutocompleteActivity;
+import com.google.android.libraries.places.widget.AutocompleteSupportFragment;
+import com.google.android.libraries.places.widget.listener.PlaceSelectionListener;
+import com.google.android.libraries.places.widget.model.AutocompleteActivityMode;
+
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static android.Manifest.permission.ACCESS_COARSE_LOCATION;
@@ -63,10 +78,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private long UPDATE_INTERVAL = 15000;  /* 15 secs */
     private long FASTEST_INTERVAL = 5000; /* 5 secs */
 
+    public boolean etOriginSelected =false ;
+    public boolean etDestinationSelected =false;
 
     private Button btnFindPath;
-    private EditText etOrigin;
-    private EditText etDestination;
+//    private EditText etOrigin;
+//    private EditText etDestination;
     private List<Marker> originMarkers = new ArrayList<>();
     private List<Marker> destinationMarkers = new ArrayList<>();
     private List<Polyline> polylinePaths = new ArrayList<>();
@@ -76,7 +93,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private ArrayList permissionsRejected = new ArrayList();
     private ArrayList permissions = new ArrayList();
 
+    private AutocompleteSupportFragment etOrigin;
+    private AutocompleteSupportFragment etDestination;
+    private String origin;
+    private String destination;
+
     private final static int ALL_PERMISSIONS_RESULT = 101;
+    public static final int PLACE_AUTOCOMPLETE_FROM_PLACE_REQUEST_CODE=1;
+    public static final int PLACE_AUTOCOMPLETE_TO_PLACE_REQUEST_CODE=2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,13 +108,83 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         setContentView(R.layout.activity_maps);
 
         btnFindPath = (Button) findViewById(R.id.btnFindPath);
-        etOrigin = (EditText) findViewById(R.id.etOrigin);
-        etDestination = (EditText) findViewById(R.id.etDestination);
+//        etOrigin = (EditText) findViewById(R.id.etOrigin);
+//        etDestination = (EditText) findViewById(R.id.etDestination);
+
+        etOrigin = (AutocompleteSupportFragment)
+                getSupportFragmentManager().findFragmentById(R.id.etOrigin);
+
+        etDestination = (AutocompleteSupportFragment)
+                getSupportFragmentManager().findFragmentById(R.id.etDestination);
         infoLayout = findViewById(R.id.infoLayout);
+
+
+        // Initialize the Origin AutocompleteSupportFragment.
+
+
+        etOrigin.setPlaceFields(Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG));
+
+        etOrigin.setOnPlaceSelectedListener(new PlaceSelectionListener() {
+                                                            @Override
+                                                            public void onPlaceSelected(Place place) {
+                                                                // TODO: Get info about the selected place.
+                                                                etOrigin.setText(place.getName());
+                                                                origin = place.getId();
+                                                                Log.i("Success", "Place: " + place.getAddress() + ", " + place.getLatLng());
+                                                                Log.i("Success", origin);
+                                                            }
+            @Override
+            public void onError(Status status) {
+                // TODO: Handle the error.
+                Log.i("error", "An error occurred: " + status);
+            }
+        });
+
+
+
+        etDestination.setPlaceFields(Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG));
+
+        etDestination.setOnPlaceSelectedListener(new PlaceSelectionListener() {
+            @Override
+            public void onPlaceSelected(Place place) {
+                // TODO: Get info about the selected place.
+                etDestination.setText(place.getAddress());
+                destination = place.getId();
+                Log.i("Success", "Place: " + place.getName() + ", " + place.getId());
+                Log.i("Success", destination);
+            }
+            @Override
+            public void onError(Status status) {
+                // TODO: Handle the error.
+                Log.i("error", "An error occurred: " + status);
+            }
+        });
+
+
+//        etOrigin.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                findPlace();
+//            }
+//        });
+//        etDestination.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                findPlace2();
+//            }
+//        });
+
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+        String res = getString(R.string.google_api_key);
+        Places.initialize(getApplicationContext(), res);
+
+        PlacesClient placesClient = Places.createClient(this);
+
+
 
         btnFindPath.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -128,9 +222,62 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         connectClient();
     }
 
+//    private void findPlace2() {
+////        Toast.makeText(this, "I'm here too", Toast.LENGTH_SHORT).show();
+//        List<Place.Field> fields = Arrays.asList(Place.Field.ID, Place.Field.NAME);
+//            Intent intent = new Autocomplete
+//                    .IntentBuilder(AutocompleteActivityMode.OVERLAY, fields)
+//                    .build(MapsActivity.this);
+//            startActivityForResult(intent, PLACE_AUTOCOMPLETE_TO_PLACE_REQUEST_CODE);
+//
+//    }
+//
+//    private void findPlace() {
+////        Toast.makeText(this, "I'm here", Toast.LENGTH_SHORT).show();
+//        List<Place.Field> fields = Arrays.asList(Place.Field.ID, Place.Field.NAME);
+//
+//            Intent intent = new Autocomplete
+//                    .IntentBuilder(AutocompleteActivityMode.OVERLAY, fields)
+//                    .build(MapsActivity.this);
+//            startActivityForResult(intent, PLACE_AUTOCOMPLETE_FROM_PLACE_REQUEST_CODE);
+//    }
+
+//    @Override
+//    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+////        Toast.makeText(this, "I'm here", Toast.LENGTH_SHORT).show();
+//        if (requestCode == PLACE_AUTOCOMPLETE_FROM_PLACE_REQUEST_CODE) {
+//            if (resultCode == RESULT_OK) {
+//                Toast.makeText(this, "I'm here", Toast.LENGTH_SHORT).show();
+//                Place place = Autocomplete.getPlaceFromIntent(data);
+//                String address = (String) place.getAddress();
+//                etOrigin.setText(address, TextView.BufferType.EDITABLE);
+//                } else if (resultCode == AutocompleteActivity.RESULT_ERROR) {
+//                // TODO: Handle the error.
+//                Status status = Autocomplete.getStatusFromIntent(data);
+//                Log.d("error", status.getStatusMessage());
+//            } else if (resultCode == RESULT_CANCELED) {
+//                // The user canceled the operation.
+//            }
+//            } else if (requestCode == PLACE_AUTOCOMPLETE_TO_PLACE_REQUEST_CODE) {
+//            if (resultCode == RESULT_OK) {
+//                Place place = Autocomplete.getPlaceFromIntent(data);
+//                String address = (String) place.getAddress();
+//                etDestination.setText(address, TextView.BufferType.EDITABLE);
+//            } else if (resultCode == AutocompleteActivity.RESULT_ERROR) {
+//                // TODO: Handle the error.
+//                Status status = Autocomplete.getStatusFromIntent(data);
+//                Log.d("error", status.getStatusMessage());
+//            } else if (resultCode == RESULT_CANCELED) {
+//                // The user canceled the operation.
+//            }
+//
+//        }
+//    }
+
     private void sendRequest() {
-        String origin = etOrigin.getText().toString();
-        String destination = etDestination.getText().toString();
+        Toast.makeText(this, "I'm here", Toast.LENGTH_SHORT).show();
+//        String origin = etOrigin.toString();
+//        String destination = etDestination.toString();
         if (origin.isEmpty()) {
             Toast.makeText(this, "Please enter origin address!", Toast.LENGTH_SHORT).show();
             return;
