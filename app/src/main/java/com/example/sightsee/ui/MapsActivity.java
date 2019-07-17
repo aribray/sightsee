@@ -116,7 +116,7 @@ public class MapsActivity extends AppCompatActivity
     Location mLocation;
     private LocationRequest mLocationRequest;
 
-    private int distance = 200; // meter
+    private int distance = 20000; // meter
 
     private List<Marker> originMarkers = new ArrayList<>();
     private List<Marker> destinationMarkers = new ArrayList<>();
@@ -143,7 +143,7 @@ public class MapsActivity extends AppCompatActivity
     private AutocompleteSupportFragment etDestination;
     private Button btnFindPath;
 
-    private int toleranceDistance = 200;
+    private int toleranceDistance = 20000;
     private Polyline line;
     private LatLng start, end;
 
@@ -297,8 +297,16 @@ public class MapsActivity extends AppCompatActivity
     }
 
     @Override
-    public void onJSONRouteLoaded(ArrayList<LatLng> route) throws IOException {
-//        Toast.makeText(this, "I'm here", Toast.LENGTH_SHORT).show();
+    public void onJSONRouteLoaded(ArrayList<LatLng> route) {
+
+//        Route r = new Route(route);
+//        Log.d("RouteBoxer", r.toString());
+//
+//        boolean simplify = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("pref_simplify", true);
+//        boolean runBoth = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("pref_runboth", false);
+//
+//        RouteBoxerTask routeBoxerTask = new RouteBoxerTask(route, this.distance, simplify, runBoth, this);
+//        routeBoxerTask.execute();
 //
 //        PolylineOptions polylineOptions = new PolylineOptions()
 //                .color(Color.RED)
@@ -308,26 +316,7 @@ public class MapsActivity extends AppCompatActivity
 //        if (this.routePolyline != null)
 //            this.routePolyline.remove();
 //        this.routePolyline = this.mMap.addPolyline(polylineOptions);
-//
-//        ArrayList<DouglasPeucker.Point> points = new ArrayList<>();
-//        for(LatLng point: route)
-//            points.add(new DouglasPeucker.Point(point.latitude, point.longitude));
-//
-//        DouglasPeucker douglasPeucker = new DouglasPeucker();
-//        this.toleranceDistance = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString("pref_key_tolerance_distance", "200"));
-//        ArrayList<DouglasPeucker.Point> simplifiedRoute = douglasPeucker.simplify(points, this.toleranceDistance);
-//
-//        PolylineOptions simplifiedPolylineOptions = new PolylineOptions()
-//                .color(Color.BLUE)
-//                .width(8);
-//        for(DouglasPeucker.Point latLng : simplifiedRoute)
-//            simplifiedPolylineOptions.add(new LatLng(latLng.latitude, latLng.longitude));
-//
-//        if(this.simplifiedPolyline != null)
-//            this.simplifiedPolyline.remove();
-//
-//        this.simplifiedPolyline = this.mMap.addPolyline(simplifiedPolylineOptions);
-//
+//        //this.routePolyline.setPattern(Arrays.asList(new Dash(30), new Gap(10)));
 //        if (this.boxPolygons == null)
 //            this.boxPolygons = new ArrayList<>();
 //        else {
@@ -336,13 +325,12 @@ public class MapsActivity extends AppCompatActivity
 //            }
 //        }
 //
-//        ArrayList<LatLng> sRoute = new ArrayList<>();
-//        for(DouglasPeucker.Point point: simplifiedRoute)
-//            sRoute.add(new LatLng(point.latitude, point.longitude));
-//
-//        RouteBoxerTask routeBoxerTask = new RouteBoxerTask(route, this.distance, this);
-//        routeBoxerTask.execute();
+//        if(this.gridBoxes != null) {
+//            for(Polygon polygon: this.gridBoxes)
+//                polygon.remove();
+//        }
     }
+
 
     @Override
     public void routeJsonObtained(String json) {
@@ -443,6 +431,7 @@ public class MapsActivity extends AppCompatActivity
 
     @Override
     public void onRouteBoxerTaskComplete(ArrayList<RouteBoxer.Box> boxes) {
+        Toast.makeText(this, "I'm here", Toast.LENGTH_SHORT).show();
         this.draw(boxes, Color.argb(128, 255, 0, 0), Color.argb(15, 255, 0, 0));
 //        if(this.routeBoxProcessDialog != null && this.routeBoxProcessDialog.isShowing())
 //            this.routeBoxProcessDialog.dismiss();
@@ -551,10 +540,11 @@ public class MapsActivity extends AppCompatActivity
             } else if (box.expandMarked) {
                 polygonOptions.strokeColor(Color.DKGRAY)
                         .fillColor(Color.argb(72, 0, 0, 0));
-            } else
-                polygonOptions.fillColor(fillColor);
-            Polygon boxPolygon = mMap.addPolygon(polygonOptions);
-            this.boxPolygons.add(boxPolygon);
+              }
+//            else
+//                polygonOptions.fillColor(fillColor);
+//            Polygon boxPolygon = mMap.addPolygon(polygonOptions);
+//            this.boxPolygons.add(boxPolygon);
         }
 
         return;
@@ -581,29 +571,6 @@ public class MapsActivity extends AppCompatActivity
             mMap.animateCamera(cameraUpdate);
 
             startLocationUpdates();
-
-//        Location location = LocationServices.FusedLocationApi.getLastLocation(this.mGoogleApiClient);
-//        this.start = new LatLng(mLocation.getLatitude(), mLocation.getLongitude());
-        //origin = new LatLng(38.595900, -89.985198);
-//        start = new LatLng(38.506380, -89.968063);
-
-        if (this.start == null)
-            new AlertDialog.Builder(this)
-                    .setTitle("Warning")
-                    .setMessage("Unable to obtain your last known location. Please enable Location on Settings.")
-                    .show();
-        if (this.mMap != null && this.start != null) {
-            this.mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(this.start, this.defaultZoom));
-            MarkerOptions originMarkerOptions = new MarkerOptions()
-                    .title("Your location")
-                    .snippet("Your last known location")
-                    .position(this.start)
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
-            if (this.originMarker != null)
-                this.originMarker.remove();
-            this.originMarker = this.mMap.addMarker(originMarkerOptions);
-        }
-        this.mGoogleApiClient.disconnect();
     }
 
     private void sendRequest() {
@@ -656,37 +623,8 @@ public class MapsActivity extends AppCompatActivity
     @Override
     public void onLocationChanged(Location location) {
 
-
     }
 
-//    @Override
-//    public void onMapLongClick(LatLng destination) {
-//
-//        this.destination = destination;
-//
-//        //this.destination = new LatLng(-7.953037137608645,112.63877917081118);
-//        //this.origin = new LatLng(-7.9545055,112.6148412);
-//
-//        //this.destination = new LatLng(-7.982594952681266,112.63102859258652);
-//        //this.origin = new LatLng(-7.9520931,112.6126944);
-//
-//        MarkerOptions destinationMarkerOptions = new MarkerOptions()
-//                .title("Destination")
-//                .position(this.destination)
-//                .snippet("Tap to RouteBox");
-//
-//        if (this.destinationMarker != null)
-//            this.destinationMarker.remove();
-//        this.destinationMarker = this.mMap.addMarker(destinationMarkerOptions);
-//        this.destinationMarker.showInfoWindow();
-//
-//
-//    }
-
-//    @Override
-//    public void onInfoWindowClick(Marker marker) {
-//        this.recalculateBox();
-//    }
 
     private void recalculateBox() {
         if (this.start != null && this.end != null) {
@@ -755,35 +693,39 @@ public class MapsActivity extends AppCompatActivity
 
 
         for (MapRoute mapRoute : mapRoutes) {
-//            Log.d("checking", "onDirectionFinderSuccess: " + mapRoute.points);
+//
+//            PolylineOptions polylineOptions = new PolylineOptions()
+//                    .color(Color.RED)
+//                    .width(8);
+            PolylineOptions polylineOptions = new PolylineOptions().
+                    geodesic(true).
+                    color(Color.rgb(82, 219, 255)).
+                    width(10);
 
-            PolylineOptions polylineOptions = new PolylineOptions()
-                    .color(Color.RED)
-                    .width(8);
-            for (LatLng point : mapRoute.points)
-                polylineOptions.add(point);
-            if (this.routePolyline != null)
-                this.routePolyline.remove();
-            this.routePolyline = this.mMap.addPolyline(polylineOptions);
+//            for (LatLng point : mapRoute.points)
+//                polylineOptions.add(point);
+//            if (this.routePolyline != null)
+//                this.routePolyline.remove();
+//            this.routePolyline = this.mMap.addPolyline(polylineOptions);
 
             ArrayList<DouglasPeucker.Point> points = new ArrayList<>();
             for (LatLng point : mapRoute.points)
                 points.add(new DouglasPeucker.Point(point.latitude, point.longitude));
 
             DouglasPeucker douglasPeucker = new DouglasPeucker();
-            this.toleranceDistance = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString("pref_key_tolerance_distance", "200"));
-            ArrayList<DouglasPeucker.Point> simplifiedRoute = douglasPeucker.simplify(points, this.toleranceDistance);
+            this.toleranceDistance = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString("pref_key_tolerance_distance", "20000"));
+//            ArrayList<DouglasPeucker.Point> simplifiedRoute = douglasPeucker.simplify(points, this.toleranceDistance);
+//
+//            PolylineOptions simplifiedPolylineOptions = new PolylineOptions()
+//                    .color(Color.BLUE)
+//                    .width(8);
+//            for (DouglasPeucker.Point latLng : simplifiedRoute)
+//                simplifiedPolylineOptions.add(new LatLng(latLng.latitude, latLng.longitude));
+//
+//            if (this.simplifiedPolyline != null)
+//                this.simplifiedPolyline.remove();
 
-            PolylineOptions simplifiedPolylineOptions = new PolylineOptions()
-                    .color(Color.BLUE)
-                    .width(8);
-            for (DouglasPeucker.Point latLng : simplifiedRoute)
-                simplifiedPolylineOptions.add(new LatLng(latLng.latitude, latLng.longitude));
-
-            if (this.simplifiedPolyline != null)
-                this.simplifiedPolyline.remove();
-
-            this.simplifiedPolyline = this.mMap.addPolyline(simplifiedPolylineOptions);
+//            this.simplifiedPolyline = this.mMap.addPolyline(simplifiedPolylineOptions);
 
             if (this.boxPolygons == null)
                 this.boxPolygons = new ArrayList<>();
@@ -793,12 +735,9 @@ public class MapsActivity extends AppCompatActivity
                 }
             }
 
-            ArrayList<LatLng> sRoute = new ArrayList<>();
-            for (DouglasPeucker.Point point : simplifiedRoute)
-                sRoute.add(new LatLng(point.latitude, point.longitude));
-
-            RouteBoxerTask routeBoxerTask = new RouteBoxerTask(mapRoute.points, this.distance, this);
-            routeBoxerTask.execute();
+//            ArrayList<LatLng> sRoute = new ArrayList<>();
+//            for (DouglasPeucker.Point point : simplifiedRoute)
+//                sRoute.add(new LatLng(point.latitude, point.longitude));
 
             ((TextView) findViewById(R.id.tvDuration)).setText(mapRoute.mapDuration.txtDuration);
             ((TextView) findViewById(R.id.tvDistance)).setText(mapRoute.mapDistance.txtDistance);
@@ -815,15 +754,12 @@ public class MapsActivity extends AppCompatActivity
                     .title(mapRoute.endAddress)
                     .position(mapRoute.endLocation)));
 
-//            PolylineOptions polylineOptions = new PolylineOptions().
-//                    geodesic(true).
-//                    color(Color.rgb(82, 219, 255)).
-//                    width(10);
 
             for (int i = 0; i < mapRoute.points.size(); i++)
                 polylineOptions.add(mapRoute.points.get(i));
 
             polylinePaths.add(mMap.addPolyline(polylineOptions));
+
 
 
             LatLngBounds.Builder builder = new LatLngBounds.Builder();
@@ -836,10 +772,15 @@ public class MapsActivity extends AppCompatActivity
             }
             LatLngBounds bounds = builder.build();
 
+            RouteBoxerTask routeBoxerTask = new RouteBoxerTask(mapRoute.points, this.distance, this);
+
+            routeBoxerTask.execute();
+
             int padding = 20; // offset from edges of the map in pixels
             CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, padding);
 
             mMap.moveCamera(cu);
+
         }
     }
 
