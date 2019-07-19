@@ -36,6 +36,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 //import com.afollestad.materialdialogs.MaterialDialog;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
 import com.example.sightsee.R;
 import com.example.sightsee.model.DouglasPeucker;
 import com.example.sightsee.model.IMaps;
@@ -92,9 +98,20 @@ import com.google.android.libraries.places.api.model.Place;
 import com.google.android.libraries.places.api.net.PlacesClient;
 import com.google.android.libraries.places.widget.AutocompleteSupportFragment;
 import com.google.android.libraries.places.widget.listener.PlaceSelectionListener;
+import com.google.gson.JsonObject;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import noman.googleplaces.NRPlaces;
+import noman.googleplaces.PlaceType;
+import noman.googleplaces.PlacesListener;
 
 import static android.Manifest.permission.ACCESS_COARSE_LOCATION;
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
+import static android.provider.ContactsContract.ProviderStatus.STATUS;
+import static com.akexorcist.googledirection.constant.RequestResult.OK;
 
 public class MapsActivity extends AppCompatActivity
         implements OnMapReadyCallback, IMaps, RouteBoxerTask.IRouteBoxerTask,
@@ -106,8 +123,8 @@ public class MapsActivity extends AppCompatActivity
 //    private static final int WEAR_REQUEST_CODE_2 = 88;
 
     private final static int ALL_PERMISSIONS_RESULT = 101;
-    public static final int PLACE_AUTOCOMPLETE_FROM_PLACE_REQUEST_CODE=1;
-    public static final int PLACE_AUTOCOMPLETE_TO_PLACE_REQUEST_CODE=2;
+    public static final int PLACE_AUTOCOMPLETE_FROM_PLACE_REQUEST_CODE = 1;
+    public static final int PLACE_AUTOCOMPLETE_TO_PLACE_REQUEST_CODE = 2;
     private long UPDATE_INTERVAL = 15000;  /* 15 secs */
     private long FASTEST_INTERVAL = 5000; /* 5 secs */
 
@@ -116,7 +133,7 @@ public class MapsActivity extends AppCompatActivity
     Location mLocation;
     private LocationRequest mLocationRequest;
 
-    private int distance = 20000; // meter
+    private int distance; // meter
 
     private List<Marker> originMarkers = new ArrayList<>();
     private List<Marker> destinationMarkers = new ArrayList<>();
@@ -143,14 +160,23 @@ public class MapsActivity extends AppCompatActivity
     private AutocompleteSupportFragment etDestination;
     private Button btnFindPath;
 
-    private int toleranceDistance = 20000;
+    private int toleranceDistance;
     private Polyline line;
     private LatLng start, end;
+    public List<LatLng> centerBoxes;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        Bundle extras = getIntent().getExtras();
+
+        if (extras != null) {
+            distance = extras.getInt("max_distance") * 1610;
+        }
+
+        toleranceDistance = distance;
 
         // Create an instance of GoogleAPIClient.
         if (this.mGoogleApiClient == null) {
@@ -162,9 +188,7 @@ public class MapsActivity extends AppCompatActivity
         }
 
         setContentView(R.layout.activity_maps);
-//        ActionBar actionBar = this.getSupportActionBar();
-//        actionBar.setHomeButtonEnabled(true);
-//        actionBar.show();
+
         btnFindPath = (Button) findViewById(R.id.btnFindPath);
 
         etOrigin = (AutocompleteSupportFragment)
@@ -188,21 +212,21 @@ public class MapsActivity extends AppCompatActivity
         etOrigin.setPlaceFields(Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG));
 
         etOrigin.setOnPlaceSelectedListener(new PlaceSelectionListener() {
-                                                            @Override
-                                                            public void onPlaceSelected(Place place) {
-                                                                // TODO: Get info about the selected place.
-                                                                etOrigin.setText(place.getName());
-                                                                origin = place.getId();
-                                                                Log.i("Success", "Place: " + place.getAddress() + ", " + place.getLatLng());
-                                                                Log.i("Success", origin);
-                                                            }
+            @Override
+            public void onPlaceSelected(Place place) {
+                // TODO: Get info about the selected place.
+                etOrigin.setText(place.getName());
+                origin = place.getId();
+                Log.i("Success", "Place: " + place.getAddress() + ", " + place.getLatLng());
+                Log.i("Success", origin);
+            }
+
             @Override
             public void onError(Status status) {
                 // TODO: Handle the error.
                 Log.i("error", "An error occurred: " + status);
             }
         });
-
 
 
         etDestination.setPlaceFields(Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG));
@@ -216,6 +240,7 @@ public class MapsActivity extends AppCompatActivity
                 Log.i("Success", "Place: " + place.getName() + ", " + place.getId());
                 Log.i("Success", destination);
             }
+
             @Override
             public void onError(Status status) {
                 // TODO: Handle the error.
@@ -433,40 +458,11 @@ public class MapsActivity extends AppCompatActivity
     public void onRouteBoxerTaskComplete(ArrayList<RouteBoxer.Box> boxes) {
         Toast.makeText(this, "I'm here", Toast.LENGTH_SHORT).show();
         this.draw(boxes, Color.argb(128, 255, 0, 0), Color.argb(15, 255, 0, 0));
-//        if(this.routeBoxProcessDialog != null && this.routeBoxProcessDialog.isShowing())
-//            this.routeBoxProcessDialog.dismiss();
-//        this.showNotification();
     }
 
-//    private void showNotification() {
-//        Intent dismissIntent = new Intent(WearActionReceiver.WEAR_ACTION);
-//        dismissIntent.putExtra(WearActionReceiver.WEAR_ACTION_CODE, WearActionReceiver.DISMISS_NOTIFICATION);
-//
-//        PendingIntent pendingIntentDismiss = PendingIntent.getBroadcast(mContext, WEAR_REQUEST_CODE,
-//                dismissIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-//
-//        Intent recalculateIntent = new Intent(WearActionReceiver.WEAR_ACTION);
-//        recalculateIntent.putExtra(WearActionReceiver.WEAR_ACTION_CODE, WearActionReceiver.RECALCULATE);
-//
-//        PendingIntent pendingIntentRecalculate = PendingIntent.getBroadcast(mContext, WEAR_REQUEST_CODE_2,
-//                recalculateIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-//
-//        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this)
-//                .setSmallIcon(R.drawable.ic_action_call_split)
-//                .setContentTitle("RouteBoxer")
-//                .setContentText("RouteBoxer has completed the computation process")
-//                .addAction(R.mipmap.ic_launcher_round, "Dismiss", pendingIntentDismiss)
-//                .addAction(R.mipmap.ic_launcher_round, "Recalculate", pendingIntentRecalculate);
-//
-//        NotificationManagerCompat notificationManagerCompat =
-//                NotificationManagerCompat.from(this);
-//        notificationManagerCompat.notify(NOTIFICATION_ID, mBuilder.build());
-//    }
 
     @Override
     public void onRouteBoxerMessage(String message) {
-//        if(this.routeBoxProcessDialog != null && this.routeBoxProcessDialog.isShowing())
-//            this.routeBoxProcessDialog.setContent(message);
     }
 
     @Override
@@ -475,6 +471,7 @@ public class MapsActivity extends AppCompatActivity
             this.gridBoxes = new ArrayList<>();
         else this.gridBoxes.clear();
 
+        centerBoxes = new ArrayList<LatLng>();
         for (RouteBoxer.Box box : boxes) {
             LatLng nw = new LatLng(box.ne.latitude, box.sw.longitude);
             LatLng se = new LatLng(box.sw.latitude, box.ne.longitude);
@@ -490,6 +487,14 @@ public class MapsActivity extends AppCompatActivity
             } else if (box.marked) {
                 polygonOptions.strokeColor(boxBorderColor)
                         .fillColor(markedColor);
+                    LatLng center = new LatLng((box.ne.latitude + box.sw.latitude)/2, (box.ne.longitude + box.sw.longitude)/2);
+                    loadNearByPlaces(center.latitude, center.longitude);
+//            Log.d("boxes", "onRouteBoxerTaskComplete: " + box.);
+
+                // getting center of each marked box
+//                LatLng center = new LatLng((nw.latitude + se.latitude)/2, (nw.longitude + se.longitude)/2);
+//                centerBoxes.add(center);
+//                Log.d("center", "onRouteBoxerGrid: " + center);
             } else
                 polygonOptions.fillColor(Color.TRANSPARENT);
             Polygon boxPolygon = mMap.addPolygon(polygonOptions);
@@ -540,7 +545,7 @@ public class MapsActivity extends AppCompatActivity
             } else if (box.expandMarked) {
                 polygonOptions.strokeColor(Color.DKGRAY)
                         .fillColor(Color.argb(72, 0, 0, 0));
-              }
+            }
 //            else
 //                polygonOptions.fillColor(fillColor);
 //            Polygon boxPolygon = mMap.addPolygon(polygonOptions);
@@ -566,17 +571,14 @@ public class MapsActivity extends AppCompatActivity
 
         mLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
 
-            LatLng latLng = new LatLng(mLocation.getLatitude(), mLocation.getLongitude());
-            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 12);
-            mMap.animateCamera(cameraUpdate);
+        LatLng latLng = new LatLng(mLocation.getLatitude(), mLocation.getLongitude());
+        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 12);
+        mMap.animateCamera(cameraUpdate);
 
-            startLocationUpdates();
+        startLocationUpdates();
     }
 
     private void sendRequest() {
-//        Toast.makeText(this, "I'm here", Toast.LENGTH_SHORT).show();
-//        String origin = etOrigin.toString();
-//        String destination = etDestination.toString();
         if (origin.isEmpty()) {
             Toast.makeText(this, "Please enter origin address!", Toast.LENGTH_SHORT).show();
             return;
@@ -587,7 +589,7 @@ public class MapsActivity extends AppCompatActivity
         }
 
         try {
-            new SearchDirection( this, origin, destination).execute();
+            new SearchDirection(this, origin, destination).execute();
 //            infoLayout.setVisibility(View.VISIBLE);
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
@@ -628,25 +630,10 @@ public class MapsActivity extends AppCompatActivity
 
     private void recalculateBox() {
         if (this.start != null && this.end != null) {
-            //origin = new LatLng(38.595900, -89.985198);
-            //destination = new LatLng(38.506360, -89.984318);
-            //destination = new LatLng(38.506380, -89.968063);
-            //origin = new LatLng(38.504700, -89.851810);
-
-            //this.origin = new LatLng(-7.9544773,112.6148372);
-            //this.destination = new LatLng(-7.953271897865304,112.63915132731199);
 
             RouteTask routeTask = new RouteTask(this, this.start, this.end);
             if (routeTask.getStatus() == AsyncTask.Status.PENDING)
                 routeTask.execute();
-            /*
-            this.routeBoxProcessDialog = new MaterialDialog.Builder(this)
-                    .cancelable(false)
-                    .content("Obtaining boxes...")
-                    .progress(true, 0)
-                    .progressIndeterminateStyle(true)
-                    .show();
-            */
         }
     }
 
@@ -693,20 +680,11 @@ public class MapsActivity extends AppCompatActivity
 
 
         for (MapRoute mapRoute : mapRoutes) {
-//
-//            PolylineOptions polylineOptions = new PolylineOptions()
-//                    .color(Color.RED)
-//                    .width(8);
+
             PolylineOptions polylineOptions = new PolylineOptions().
                     geodesic(true).
                     color(Color.rgb(82, 219, 255)).
                     width(10);
-
-//            for (LatLng point : mapRoute.points)
-//                polylineOptions.add(point);
-//            if (this.routePolyline != null)
-//                this.routePolyline.remove();
-//            this.routePolyline = this.mMap.addPolyline(polylineOptions);
 
             ArrayList<DouglasPeucker.Point> points = new ArrayList<>();
             for (LatLng point : mapRoute.points)
@@ -715,17 +693,6 @@ public class MapsActivity extends AppCompatActivity
             DouglasPeucker douglasPeucker = new DouglasPeucker();
             this.toleranceDistance = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString("pref_key_tolerance_distance", "20000"));
 //            ArrayList<DouglasPeucker.Point> simplifiedRoute = douglasPeucker.simplify(points, this.toleranceDistance);
-//
-//            PolylineOptions simplifiedPolylineOptions = new PolylineOptions()
-//                    .color(Color.BLUE)
-//                    .width(8);
-//            for (DouglasPeucker.Point latLng : simplifiedRoute)
-//                simplifiedPolylineOptions.add(new LatLng(latLng.latitude, latLng.longitude));
-//
-//            if (this.simplifiedPolyline != null)
-//                this.simplifiedPolyline.remove();
-
-//            this.simplifiedPolyline = this.mMap.addPolyline(simplifiedPolylineOptions);
 
             if (this.boxPolygons == null)
                 this.boxPolygons = new ArrayList<>();
@@ -761,7 +728,6 @@ public class MapsActivity extends AppCompatActivity
             polylinePaths.add(mMap.addPolyline(polylineOptions));
 
 
-
             LatLngBounds.Builder builder = new LatLngBounds.Builder();
             for (Marker marker : originMarkers) {
                 builder.include(marker.getPosition());
@@ -779,10 +745,132 @@ public class MapsActivity extends AppCompatActivity
             int padding = 20; // offset from edges of the map in pixels
             CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, padding);
 
+
             mMap.moveCamera(cu);
 
         }
     }
+
+
+    private void loadNearByPlaces(double latitude, double longitude) {
+        Log.i("loadnearby", "loadNearByPlaces: I'm here");
+        //I think I'll need another layer of nesting here. The "type" will be an array of selected
+        // types, and I'll have to run the query for that type for each set of coordinates
+        String type = "museum";
+        StringBuilder googlePlacesUrl =
+                new StringBuilder("https://maps.googleapis.com/maps/api/place/nearbysearch/json?");
+        googlePlacesUrl.append("location=").append(latitude).append(",").append(longitude);
+        googlePlacesUrl.append("&radius=").append(distance);
+        googlePlacesUrl.append("&type=").append(type);
+        googlePlacesUrl.append("&key=" + getString(R.string.google_maps_key));
+
+        Log.d("loadnearby", "loadNearByPlaces: " + googlePlacesUrl);
+
+        RequestQueue queue = Volley.newRequestQueue(this);
+
+        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest
+                (Request.Method.GET, googlePlacesUrl.toString(), null, new Response.Listener<JSONObject>() {
+
+                    @Override
+                    public void onResponse(JSONObject response) {
+
+                        try {
+                            JSONArray results = response.getJSONArray("results");
+//                            JSONObject name = results.getJSONObject("name");
+
+                            Log.i("results", "onResponse: " + results);
+//                    JSONObject openingHours = result.getJSONObject(“opening_hours”);
+//                    Boolean open = openingHours.getBoolean(“open_now”);
+//                            Log.i("results", "onResponse: " + results);
+
+                            for (int i = 0; i < results.length(); i++) {
+
+
+                                JSONObject result = results.getJSONObject(i);
+                                ;
+                                JSONObject geometry = result.getJSONObject("geometry");
+                                String name = result.getString("name");
+                                JSONObject location = geometry.getJSONObject("location");
+                                double latitude = location.getDouble("lat");
+                                double longitude = location.getDouble("lng");
+//                                LatLng lat = latitude;
+
+                                mMap.addMarker(new MarkerOptions().position(new LatLng(latitude,longitude)).title(name));
+//                                String place_name = name.getString("name");
+
+                                Log.i("parsing", "onResponse: " + location);
+                            }
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                        Log.i("Response", "onResponse: " + response) ;
+//                        textView.setText("Response: " + response.toString());
+                    }
+                }, new Response.ErrorListener() {
+
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        // TODO: Handle error
+
+                    }
+                });
+
+        queue.add(jsonObjectRequest);
+    }
+//
+//    private void parseLocationResult(JSONObject result) {
+//
+//        String id, place_id, placeName = null, reference, icon, vicinity = null;
+//        double latitude, longitude;
+//
+//        try {
+//            JSONArray jsonArray = result.getJSONArray("results");
+//
+//            if (result.getString(STATUS).equalsIgnoreCase(OK)) {
+//
+//                mMap.clear();
+//
+//                for (int i = 0; i < jsonArray.length(); i++) {
+//                    JSONObject place = jsonArray.getJSONObject(i);
+//
+////                    id = place.getString(SUPERMARKET_ID);
+////                    place_id = place.getString(PLACE_ID);
+////                    if (!place.isNull(NAME)) {
+////                        placeName = place.getString(NAME);
+////                    }
+////                    if (!place.isNull(VICINITY)) {
+////                        vicinity = place.getString(VICINITY);
+////                    }
+////                    latitude = place.getJSONObject(GEOMETRY).getJSONObject(LOCATION)
+////                            .getDouble(LATITUDE);
+////                    longitude = place.getJSONObject(GEOMETRY).getJSONObject(LOCATION)
+////                            .getDouble(LONGITUDE);
+////                    reference = place.getString(REFERENCE);
+////                    icon = place.getString(ICON);
+//
+//                    MarkerOptions markerOptions = new MarkerOptions();
+//                    LatLng latLng = new LatLng(latitude, longitude);
+//                    markerOptions.position(latLng);
+//                    markerOptions.title(placeName + " : " + vicinity);
+//
+//                    mMap.addMarker(markerOptions);
+//                }
+//
+//                Toast.makeText(getBaseContext(), jsonArray.length() + " Supermarkets found!",
+//                        Toast.LENGTH_LONG).show();
+//            } else if (result.getString(STATUS).equalsIgnoreCase(ZERO_RESULTS)) {
+//                Toast.makeText(getBaseContext(), "No Supermarket found in 5KM radius!!!",
+//                        Toast.LENGTH_LONG).show();
+//            }
+//
+//        } catch (JSONException e) {
+//
+//            e.printStackTrace();
+//            Log.e(TAG, "parseLocationResult: Error=" + e.getMessage());
+//        }
+//    }
+
+}
 
 
 
@@ -806,7 +894,7 @@ public class MapsActivity extends AppCompatActivity
 //
 //        return result;
 //    }
-}
+
 
 //    @Override
 //    public boolean onOptionsItemSelected(MenuItem item) {
