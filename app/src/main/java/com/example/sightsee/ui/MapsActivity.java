@@ -1,11 +1,6 @@
 package com.example.sightsee.ui;
 
-import android.app.AlertDialog;
-import android.app.PendingIntent;
 import android.content.Context;
-import android.content.DialogInterface;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
@@ -22,16 +17,12 @@ import android.preference.PreferenceManager;
 //import android.support.v7.app.AppCompatActivity;
 //import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
@@ -43,11 +34,12 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.example.sightsee.R;
-import com.example.sightsee.model.DouglasPeucker;
+import com.example.sightsee.model.DouglasPreucker;
 import com.example.sightsee.model.IMaps;
 import com.example.sightsee.model.MapRoute;
 import com.example.sightsee.model.RouteBoxerTask;
 import com.example.sightsee.model.RouteTask;
+import com.example.sightsee.utils.MyAdapter;
 import com.example.sightsee.utils.SearchDirection;
 import com.example.sightsee.utils.SearchDirectionListener;
 import com.example.sightsee.utils.TestingDialog;
@@ -65,7 +57,6 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.Dash;
-import com.google.android.gms.maps.model.Dot;
 import com.google.android.gms.maps.model.Gap;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
@@ -89,7 +80,6 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 
 //import ap.mobile.routeboxer.helper.FileHelper;
 import com.example.sightsee.model.RouteBoxer;
@@ -98,20 +88,13 @@ import com.google.android.libraries.places.api.model.Place;
 import com.google.android.libraries.places.api.net.PlacesClient;
 import com.google.android.libraries.places.widget.AutocompleteSupportFragment;
 import com.google.android.libraries.places.widget.listener.PlaceSelectionListener;
-import com.google.gson.JsonObject;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import noman.googleplaces.NRPlaces;
-import noman.googleplaces.PlaceType;
-import noman.googleplaces.PlacesListener;
-
 import static android.Manifest.permission.ACCESS_COARSE_LOCATION;
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
-import static android.provider.ContactsContract.ProviderStatus.STATUS;
-import static com.akexorcist.googledirection.constant.RequestResult.OK;
 
 public class MapsActivity extends AppCompatActivity
         implements OnMapReadyCallback, IMaps, RouteBoxerTask.IRouteBoxerTask,
@@ -164,6 +147,8 @@ public class MapsActivity extends AppCompatActivity
     private Polyline line;
     private LatLng start, end;
     public List<LatLng> centerBoxes;
+    boolean runBoth = true;
+    boolean simplify = false;
 
 
     @Override
@@ -173,7 +158,7 @@ public class MapsActivity extends AppCompatActivity
         Bundle extras = getIntent().getExtras();
 
         if (extras != null) {
-            distance = extras.getInt("max_distance") * 1610;
+            distance = extras.getInt("max_distance");
         }
 
         toleranceDistance = distance;
@@ -196,7 +181,6 @@ public class MapsActivity extends AppCompatActivity
 
         etDestination = (AutocompleteSupportFragment)
                 getSupportFragmentManager().findFragmentById(R.id.etDestination);
-//        this.getSupportActionBar().setHomeButtonEnabled(true);
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -205,16 +189,13 @@ public class MapsActivity extends AppCompatActivity
 
         this.mContext = this;
 
-
-//         Initialize the Origin AutocompleteSupportFragment.
-
+//         Initialize the Origin and Destination AutocompleteSupportFragments.
 
         etOrigin.setPlaceFields(Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG));
 
         etOrigin.setOnPlaceSelectedListener(new PlaceSelectionListener() {
             @Override
             public void onPlaceSelected(Place place) {
-                // TODO: Get info about the selected place.
                 etOrigin.setText(place.getName());
                 origin = place.getId();
                 Log.i("Success", "Place: " + place.getAddress() + ", " + place.getLatLng());
@@ -234,7 +215,6 @@ public class MapsActivity extends AppCompatActivity
         etDestination.setOnPlaceSelectedListener(new PlaceSelectionListener() {
             @Override
             public void onPlaceSelected(Place place) {
-                // TODO: Get info about the selected place.
                 etDestination.setText(place.getAddress());
                 destination = place.getId();
                 Log.i("Success", "Place: " + place.getName() + ", " + place.getId());
@@ -306,9 +286,6 @@ public class MapsActivity extends AppCompatActivity
         uiSettings.setMyLocationButtonEnabled(true);
         uiSettings.setZoomControlsEnabled(true);
         uiSettings.setMapToolbarEnabled(true);
-
-//        if (this.origin != null)
-//            this.mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(this.origin, this.defaultZoom));
 
 
     }
@@ -477,28 +454,24 @@ public class MapsActivity extends AppCompatActivity
             LatLng se = new LatLng(box.sw.latitude, box.ne.longitude);
             LatLng sw = new LatLng(box.sw.latitude, box.sw.longitude);
             LatLng ne = new LatLng(box.ne.latitude, box.ne.longitude);
-            PolygonOptions polygonOptions = new PolygonOptions()
-                    .add(sw, nw, ne, se, sw)
-                    .strokeColor(boxBorderColor)
-                    .strokeWidth(3);
-            if (box.simpleMarked) {
-                polygonOptions.strokeColor(boxBorderColor)
-                        .fillColor(simpleMarkedColor);
-            } else if (box.marked) {
-                polygonOptions.strokeColor(boxBorderColor)
-                        .fillColor(markedColor);
-                    LatLng center = new LatLng((box.ne.latitude + box.sw.latitude)/2, (box.ne.longitude + box.sw.longitude)/2);
-                    loadNearByPlaces(center.latitude, center.longitude);
-//            Log.d("boxes", "onRouteBoxerTaskComplete: " + box.);
-
-                // getting center of each marked box
-//                LatLng center = new LatLng((nw.latitude + se.latitude)/2, (nw.longitude + se.longitude)/2);
-//                centerBoxes.add(center);
-//                Log.d("center", "onRouteBoxerGrid: " + center);
-            } else
-                polygonOptions.fillColor(Color.TRANSPARENT);
-            Polygon boxPolygon = mMap.addPolygon(polygonOptions);
-            this.gridBoxes.add(boxPolygon);
+//            PolygonOptions polygonOptions = new PolygonOptions()
+//                    .add(sw, nw, ne, se, sw)
+//                    .strokeColor(boxBorderColor)
+//                    .strokeWidth(3);
+//            if (box.simpleMarked) {
+////                polygonOptions.strokeColor(boxBorderColor)
+////                        .fillColor(simpleMarkedColor);
+//
+              if (box.marked) {
+//                polygonOptions.strokeColor(boxBorderColor)
+//                        .fillColor(markedColor);
+                LatLng center = new LatLng((box.ne.latitude + box.sw.latitude)/2, (box.ne.longitude + box.sw.longitude)/2);
+                loadNearByPlaces(center.latitude, center.longitude);
+            }
+//            else
+//                polygonOptions.fillColor(Color.TRANSPARENT);
+//            Polygon boxPolygon = mMap.addPolygon(polygonOptions);
+//            this.gridBoxes.add(boxPolygon);
         }
     }
 
@@ -686,13 +659,13 @@ public class MapsActivity extends AppCompatActivity
                     color(Color.rgb(82, 219, 255)).
                     width(10);
 
-            ArrayList<DouglasPeucker.Point> points = new ArrayList<>();
+            ArrayList<DouglasPreucker.Point> points = new ArrayList<>();
             for (LatLng point : mapRoute.points)
-                points.add(new DouglasPeucker.Point(point.latitude, point.longitude));
+                points.add(new DouglasPreucker.Point(point.latitude, point.longitude));
 
-            DouglasPeucker douglasPeucker = new DouglasPeucker();
+            DouglasPreucker douglasPreucker = new DouglasPreucker();
             this.toleranceDistance = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString("pref_key_tolerance_distance", "20000"));
-//            ArrayList<DouglasPeucker.Point> simplifiedRoute = douglasPeucker.simplify(points, this.toleranceDistance);
+//            ArrayList<DouglasPreucker.Point> simplifiedRoute = douglasPreucker.simplify(points, this.toleranceDistance);
 
             if (this.boxPolygons == null)
                 this.boxPolygons = new ArrayList<>();
@@ -703,7 +676,7 @@ public class MapsActivity extends AppCompatActivity
             }
 
 //            ArrayList<LatLng> sRoute = new ArrayList<>();
-//            for (DouglasPeucker.Point point : simplifiedRoute)
+//            for (DouglasPreucker.Point point : simplifiedRoute)
 //                sRoute.add(new LatLng(point.latitude, point.longitude));
 
             ((TextView) findViewById(R.id.tvDuration)).setText(mapRoute.mapDuration.txtDuration);
@@ -738,7 +711,7 @@ public class MapsActivity extends AppCompatActivity
             }
             LatLngBounds bounds = builder.build();
 
-            RouteBoxerTask routeBoxerTask = new RouteBoxerTask(mapRoute.points, this.distance, this);
+            RouteBoxerTask routeBoxerTask = new RouteBoxerTask(mapRoute.points, this.distance,this);
 
             routeBoxerTask.execute();
 
@@ -753,122 +726,62 @@ public class MapsActivity extends AppCompatActivity
 
 
     private void loadNearByPlaces(double latitude, double longitude) {
-        Log.i("loadnearby", "loadNearByPlaces: I'm here");
-        //I think I'll need another layer of nesting here. The "type" will be an array of selected
-        // types, and I'll have to run the query for that type for each set of coordinates
-        String type = "museum";
-        StringBuilder googlePlacesUrl =
-                new StringBuilder("https://maps.googleapis.com/maps/api/place/nearbysearch/json?");
-        googlePlacesUrl.append("location=").append(latitude).append(",").append(longitude);
-        googlePlacesUrl.append("&radius=").append(distance);
-        googlePlacesUrl.append("&type=").append(type);
-        googlePlacesUrl.append("&key=" + getString(R.string.google_maps_key));
+        ArrayList<String> listPlaces = MyAdapter.getSelectedString();
 
-        Log.d("loadnearby", "loadNearByPlaces: " + googlePlacesUrl);
+        for (int i = 0; i < listPlaces.size(); i++) {
+            String type = listPlaces.get(i);
+            StringBuilder googlePlacesUrl =
+                    new StringBuilder("https://maps.googleapis.com/maps/api/place/nearbysearch/json?");
+            googlePlacesUrl.append("location=").append(latitude).append(",").append(longitude);
+            googlePlacesUrl.append("&radius=").append(distance);
+            googlePlacesUrl.append("&type=").append(type);
+            googlePlacesUrl.append("&key=" + getString(R.string.google_maps_key));
 
-        RequestQueue queue = Volley.newRequestQueue(this);
+            Log.d("loadnearby", "loadNearByPlaces: " + googlePlacesUrl);
 
-        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest
-                (Request.Method.GET, googlePlacesUrl.toString(), null, new Response.Listener<JSONObject>() {
+            RequestQueue queue = Volley.newRequestQueue(this);
 
-                    @Override
-                    public void onResponse(JSONObject response) {
+            JsonObjectRequest jsonObjectRequest = new JsonObjectRequest
+                    (Request.Method.GET, googlePlacesUrl.toString(), null, new Response.Listener<JSONObject>() {
 
-                        try {
-                            JSONArray results = response.getJSONArray("results");
-//                            JSONObject name = results.getJSONObject("name");
+                        @Override
+                        public void onResponse(JSONObject response) {
 
-                            Log.i("results", "onResponse: " + results);
-//                    JSONObject openingHours = result.getJSONObject(“opening_hours”);
-//                    Boolean open = openingHours.getBoolean(“open_now”);
-//                            Log.i("results", "onResponse: " + results);
+                            try {
+                                JSONArray results = response.getJSONArray("results");
 
-                            for (int i = 0; i < results.length(); i++) {
+                                for (int i = 0; i < results.length(); i++) {
 
 
-                                JSONObject result = results.getJSONObject(i);
-                                ;
-                                JSONObject geometry = result.getJSONObject("geometry");
-                                String name = result.getString("name");
-                                JSONObject location = geometry.getJSONObject("location");
-                                double latitude = location.getDouble("lat");
-                                double longitude = location.getDouble("lng");
-//                                LatLng lat = latitude;
+                                    JSONObject result = results.getJSONObject(i);
+                                    ;
+                                    JSONObject geometry = result.getJSONObject("geometry");
+                                    String name = result.getString("name");
+                                    JSONObject location = geometry.getJSONObject("location");
+                                    double latitude = location.getDouble("lat");
+                                    double longitude = location.getDouble("lng");
 
-                                mMap.addMarker(new MarkerOptions().position(new LatLng(latitude,longitude)).title(name));
-//                                String place_name = name.getString("name");
+                                    mMap.addMarker(new MarkerOptions().position(new LatLng(latitude,longitude)).title(name).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ROSE)));
 
-                                Log.i("parsing", "onResponse: " + location);
+                                    Log.i("parsing", "onResponse: " + location);
+                                }
+                            } catch (JSONException e) {
+                                e.printStackTrace();
                             }
-                        } catch (JSONException e) {
-                            e.printStackTrace();
+                            Log.i("Response", "onResponse: " + response) ;
                         }
-                        Log.i("Response", "onResponse: " + response) ;
-//                        textView.setText("Response: " + response.toString());
-                    }
-                }, new Response.ErrorListener() {
+                    }, new Response.ErrorListener() {
 
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        // TODO: Handle error
+                        @Override
+                        public void onErrorResponse(VolleyError error) {
+                            // TODO: Handle error
 
-                    }
-                });
+                        }
+                    });
+            queue.add(jsonObjectRequest);
+        }
 
-        queue.add(jsonObjectRequest);
     }
-//
-//    private void parseLocationResult(JSONObject result) {
-//
-//        String id, place_id, placeName = null, reference, icon, vicinity = null;
-//        double latitude, longitude;
-//
-//        try {
-//            JSONArray jsonArray = result.getJSONArray("results");
-//
-//            if (result.getString(STATUS).equalsIgnoreCase(OK)) {
-//
-//                mMap.clear();
-//
-//                for (int i = 0; i < jsonArray.length(); i++) {
-//                    JSONObject place = jsonArray.getJSONObject(i);
-//
-////                    id = place.getString(SUPERMARKET_ID);
-////                    place_id = place.getString(PLACE_ID);
-////                    if (!place.isNull(NAME)) {
-////                        placeName = place.getString(NAME);
-////                    }
-////                    if (!place.isNull(VICINITY)) {
-////                        vicinity = place.getString(VICINITY);
-////                    }
-////                    latitude = place.getJSONObject(GEOMETRY).getJSONObject(LOCATION)
-////                            .getDouble(LATITUDE);
-////                    longitude = place.getJSONObject(GEOMETRY).getJSONObject(LOCATION)
-////                            .getDouble(LONGITUDE);
-////                    reference = place.getString(REFERENCE);
-////                    icon = place.getString(ICON);
-//
-//                    MarkerOptions markerOptions = new MarkerOptions();
-//                    LatLng latLng = new LatLng(latitude, longitude);
-//                    markerOptions.position(latLng);
-//                    markerOptions.title(placeName + " : " + vicinity);
-//
-//                    mMap.addMarker(markerOptions);
-//                }
-//
-//                Toast.makeText(getBaseContext(), jsonArray.length() + " Supermarkets found!",
-//                        Toast.LENGTH_LONG).show();
-//            } else if (result.getString(STATUS).equalsIgnoreCase(ZERO_RESULTS)) {
-//                Toast.makeText(getBaseContext(), "No Supermarket found in 5KM radius!!!",
-//                        Toast.LENGTH_LONG).show();
-//            }
-//
-//        } catch (JSONException e) {
-//
-//            e.printStackTrace();
-//            Log.e(TAG, "parseLocationResult: Error=" + e.getMessage());
-//        }
-//    }
 
 }
 
