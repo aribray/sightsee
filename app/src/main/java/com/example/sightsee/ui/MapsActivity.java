@@ -27,15 +27,19 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 //import com.afollestad.materialdialogs.MaterialDialog;
+import com.akexorcist.googledirection.model.Waypoint;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.example.sightsee.R;
 import com.example.sightsee.model.DouglasPreucker;
 import com.example.sightsee.model.IMaps;
+import com.example.sightsee.model.MapDistance;
+import com.example.sightsee.model.MapDuration;
 import com.example.sightsee.model.MapRoute;
 import com.example.sightsee.model.RouteBoxerTask;
 import com.example.sightsee.model.RouteTask;
@@ -88,6 +92,11 @@ import com.google.android.libraries.places.api.model.Place;
 import com.google.android.libraries.places.api.net.PlacesClient;
 import com.google.android.libraries.places.widget.AutocompleteSupportFragment;
 import com.google.android.libraries.places.widget.listener.PlaceSelectionListener;
+import com.google.maps.DirectionsApiRequest;
+import com.google.maps.android.PolyUtil;
+import com.google.maps.model.DirectionsLeg;
+import com.google.maps.model.DirectionsStep;
+import com.google.maps.model.EncodedPolyline;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -95,6 +104,7 @@ import org.json.JSONObject;
 
 import static android.Manifest.permission.ACCESS_COARSE_LOCATION;
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
+import static com.google.maps.internal.StringJoin.join;
 
 public class MapsActivity extends AppCompatActivity
         implements OnMapReadyCallback, IMaps, RouteBoxerTask.IRouteBoxerTask,
@@ -118,8 +128,12 @@ public class MapsActivity extends AppCompatActivity
 
     private int distance; // meter
 
+    private String waypoints;
+    private Marker marker;
+    private ArrayList<LatLng> Latlng = new ArrayList<>();
     private List<Marker> originMarkers = new ArrayList<>();
     private List<Marker> destinationMarkers = new ArrayList<>();
+    private ArrayList<Marker> waypointMarkers = new ArrayList<>();
     private List<Polyline> polylinePaths = new ArrayList<>();
     private LatLngBounds bounds;
     private Polyline routePolyline, simplifiedPolyline;
@@ -142,6 +156,7 @@ public class MapsActivity extends AppCompatActivity
     private AutocompleteSupportFragment etOrigin;
     private AutocompleteSupportFragment etDestination;
     private Button btnFindPath;
+    private Button btnSightsee;
 
     private int toleranceDistance;
     private Polyline line;
@@ -149,6 +164,8 @@ public class MapsActivity extends AppCompatActivity
     public List<LatLng> centerBoxes;
     boolean runBoth = true;
     boolean simplify = false;
+    private List<MapRoute> mapRoutes = new ArrayList<MapRoute>();
+    private List<LatLng> path = new ArrayList();
 
 
     @Override
@@ -175,6 +192,8 @@ public class MapsActivity extends AppCompatActivity
         setContentView(R.layout.activity_maps);
 
         btnFindPath = (Button) findViewById(R.id.btnFindPath);
+
+        btnSightsee = (Button) findViewById(R.id.sightsee);
 
         etOrigin = (AutocompleteSupportFragment)
                 getSupportFragmentManager().findFragmentById(R.id.etOrigin);
@@ -239,7 +258,17 @@ public class MapsActivity extends AppCompatActivity
                 sendRequest();
             }
         });
+
+        btnSightsee.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                waypointParser(waypointMarkers);
+                redrawRoute();
+            }
+        });
+
     }
+
 
     protected void onStart() {
         this.mGoogleApiClient.connect();
@@ -286,8 +315,6 @@ public class MapsActivity extends AppCompatActivity
         uiSettings.setMyLocationButtonEnabled(true);
         uiSettings.setZoomControlsEnabled(true);
         uiSettings.setMapToolbarEnabled(true);
-
-
     }
 
     public static class Route implements Serializable {
@@ -454,24 +481,10 @@ public class MapsActivity extends AppCompatActivity
             LatLng se = new LatLng(box.sw.latitude, box.ne.longitude);
             LatLng sw = new LatLng(box.sw.latitude, box.sw.longitude);
             LatLng ne = new LatLng(box.ne.latitude, box.ne.longitude);
-//            PolygonOptions polygonOptions = new PolygonOptions()
-//                    .add(sw, nw, ne, se, sw)
-//                    .strokeColor(boxBorderColor)
-//                    .strokeWidth(3);
-//            if (box.simpleMarked) {
-////                polygonOptions.strokeColor(boxBorderColor)
-////                        .fillColor(simpleMarkedColor);
-//
               if (box.marked) {
-//                polygonOptions.strokeColor(boxBorderColor)
-//                        .fillColor(markedColor);
                 LatLng center = new LatLng((box.ne.latitude + box.sw.latitude)/2, (box.ne.longitude + box.sw.longitude)/2);
                 loadNearByPlaces(center.latitude, center.longitude);
             }
-//            else
-//                polygonOptions.fillColor(Color.TRANSPARENT);
-//            Polygon boxPolygon = mMap.addPolygon(polygonOptions);
-//            this.gridBoxes.add(boxPolygon);
         }
     }
 
@@ -519,10 +532,6 @@ public class MapsActivity extends AppCompatActivity
                 polygonOptions.strokeColor(Color.DKGRAY)
                         .fillColor(Color.argb(72, 0, 0, 0));
             }
-//            else
-//                polygonOptions.fillColor(fillColor);
-//            Polygon boxPolygon = mMap.addPolygon(polygonOptions);
-//            this.boxPolygons.add(boxPolygon);
         }
 
         return;
@@ -649,6 +658,7 @@ public class MapsActivity extends AppCompatActivity
     public void onDirectionFinderSuccess(List<MapRoute> mapRoutes) {
         polylinePaths = new ArrayList<>();
         originMarkers = new ArrayList<>();
+        waypointMarkers = new ArrayList<>();
         destinationMarkers = new ArrayList<>();
 
 
@@ -689,10 +699,12 @@ public class MapsActivity extends AppCompatActivity
 //                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.start_blue))
                     .title(mapRoute.startAddress)
                     .position(mapRoute.startLocation)));
+                    start = mapRoute.startLocation;
             destinationMarkers.add(mMap.addMarker(new MarkerOptions()
                     .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
                     .title(mapRoute.endAddress)
                     .position(mapRoute.endLocation)));
+                    end = mapRoute.endLocation;
 
 
             for (int i = 0; i < mapRoute.points.size(); i++)
@@ -707,6 +719,10 @@ public class MapsActivity extends AppCompatActivity
             }
 
             for (Marker marker : destinationMarkers) {
+                builder.include(marker.getPosition());
+            }
+
+            for (Marker marker : waypointMarkers) {
                 builder.include(marker.getPosition());
             }
             LatLngBounds bounds = builder.build();
@@ -761,9 +777,33 @@ public class MapsActivity extends AppCompatActivity
                                     double latitude = location.getDouble("lat");
                                     double longitude = location.getDouble("lng");
 
-                                    mMap.addMarker(new MarkerOptions().position(new LatLng(latitude,longitude)).title(name).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ROSE)));
+                                    marker = mMap.addMarker(new MarkerOptions().position(new LatLng(latitude,longitude)).title(name).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ROSE)));
+                                    mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+                                        @Override
+                                        public void onInfoWindowClick(Marker marker) {
+//                                            Toast.makeText(MapsActivity.this, "We're here", Toast.LENGTH_SHORT).show();
 
-                                    Log.i("parsing", "onResponse: " + location);
+                                            if (waypointMarkers.contains(marker)) {
+                                                waypointMarkers.remove(marker);
+                                                Latlng.remove(marker.getPosition());
+                                                Toast.makeText(MapsActivity.this, "Removing waypoint from route", Toast.LENGTH_SHORT).show();
+                                            } else {
+                                                waypointMarkers.add(marker);
+                                                Latlng.add(marker.getPosition());
+                                                Toast.makeText(MapsActivity.this, "Adding waypoint to route", Toast.LENGTH_SHORT).show();
+                                            }
+                                        }
+                                    });
+
+//                                    mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+//                                        @Override
+//                                        public boolean onMarkerClick(Marker marker) {
+//                                            waypointMarkers.add(marker);
+//                                            return true;
+//                                        }
+//                                    });
+//                                    Log.i("parsing", "onResponse: " + location);
+
                                 }
                             } catch (JSONException e) {
                                 e.printStackTrace();
@@ -782,8 +822,270 @@ public class MapsActivity extends AppCompatActivity
         }
 
     }
+//
+    public void waypointParser(ArrayList waypointMarkers) {
+        if (waypointMarkers == null || waypointMarkers.size() == 0) {
+            waypoints = "";
+        } else {
+            String[] waypointStrs = new String[waypointMarkers.size()];
+
+            for (int i = 0; i < waypointMarkers.size(); i++) {
+                Marker waypoint = (Marker) waypointMarkers.get(i);
+                waypointStrs[i] = waypoint.getPosition().latitude + "," + waypoint.getPosition().longitude;
+            }
+            waypoints = join('|', waypointStrs);
+            waypoints.replace("|", "via:");
+        }
+    }
+//
+    public void redrawRoute() {
+        //thinking of doing a volley request using the origin, destination, and waypointParser
+
+        // Instantiate the RequestQueue.
+        RequestQueue queue = Volley.newRequestQueue(this);
+        String res = getString(R.string.google_maps_key);
+        String url = "https://maps.googleapis.com/maps/api/directions/json?&origin=place_id:" + origin + "&destination=place_id:" + destination + "&waypoints=" + waypoints + "&key=" + res;
+
+        Log.d("redraw", "redrawRoute: " + url);
+// Request a string response from the provided URL.
+        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest
+                (Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
+
+                    @Override
+                    public void onResponse(JSONObject response) {
+                        MapRoute mapRoute = new MapRoute();
+
+                        try {
+                            JSONArray jsonRoutes = response.getJSONArray("routes");
+                            JSONObject jsonRoute = jsonRoutes.getJSONObject(0);
+
+
+                            JSONObject overview_polylineJson = jsonRoute.getJSONObject("overview_polyline");
+//                            String encodedString = overview_polylineJson.getString("points");
+                            JSONArray jsonLegs = jsonRoute.getJSONArray("legs");
+
+                            for (int i = 0; i < jsonLegs.length(); i++) {
+
+
+                                JSONObject jsonLeg = jsonLegs.getJSONObject(i);
+                                JSONObject jsonDistance = jsonLeg.getJSONObject("distance");
+                                JSONObject jsonDuration = jsonLeg.getJSONObject("duration");
+                                JSONObject jsonEndLocation = jsonLeg.getJSONObject("end_location");
+                                JSONObject jsonStartLocation = jsonLeg.getJSONObject("start_location");
+
+                                mapRoute.mapDistance = new MapDistance(jsonDistance.getString("text"), jsonDistance.getInt("value"));
+                                mapRoute.mapDuration = new MapDuration(jsonDuration.getString("text"), jsonDuration.getInt("value"));
+                                mapRoute.endAddress = jsonLeg.getString("end_address");
+                                mapRoute.startAddress = jsonLeg.getString("start_address");
+                                mapRoute.startLocation = new LatLng(jsonStartLocation.getDouble("lat"), jsonStartLocation.getDouble("lng"));
+                                mapRoute.endLocation = new LatLng(jsonEndLocation.getDouble("lat"), jsonEndLocation.getDouble("lng"));
+                                mapRoute.points = decodePolyLine(overview_polylineJson.getString("points"));
+                                path = PolyUtil.decode(overview_polylineJson.getString("points"));
+                                mapRoutes.add(mapRoute);
+                            }
+
+                            if (originMarkers != null) {
+                                for (Marker marker : originMarkers) {
+                                    marker.remove();
+                                }
+                            }
+
+                            if (destinationMarkers != null) {
+                                for (Marker marker : destinationMarkers) {
+                                    marker.remove();
+                                }
+                            }
+
+
+                            if (polylinePaths != null) {
+                                for (Polyline polyline : polylinePaths) {
+                                    polyline.remove();
+                                }
+                            }
+
+                            polylinePaths = new ArrayList<>();
+                            originMarkers = new ArrayList<>();
+                            waypointMarkers = new ArrayList<>();
+                            destinationMarkers = new ArrayList<>();
+
+
+//                            for (MapRoute route : mapRoutes) {
+
+                                PolylineOptions polylineOptions = new PolylineOptions().
+                                        geodesic(true).
+                                        color(Color.rgb(82, 219, 255)).
+                                        width(10);
+
+//                                ArrayList<DouglasPreucker.Point> points = new ArrayList<>();
+//                                for (LatLng point : route.points)
+//                                    points.add(new DouglasPreucker.Point(point.latitude, point.longitude));
+
+                                originMarkers.add(mMap.addMarker(new MarkerOptions()
+//                   use for default marker image on map
+                                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+//                    use for show custom image on map
+//                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.start_blue))
+                                        .title("Starting your trip!")
+                                        .position(start)));
+                                destinationMarkers.add(mMap.addMarker(new MarkerOptions()
+                                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+                                        .title(mapRoutes.get(mapRoutes.size()-1).endAddress)
+                                        .position(mapRoutes.get(mapRoutes.size()-1).endLocation)));
+
+
+//                                for (int i = 0; i < route.points.size(); i++)
+//                                    polylineOptions.add(route.points.get(i));
+//
+//                                polylinePaths.add(mMap.addPolyline(polylineOptions));
+
+
+//                                LatLngBounds.Builder builder = new LatLngBounds.Builder();
+//                                for (Marker marker : originMarkers) {
+//                                    builder.include(marker.getPosition());
+//                                }
+//
+//                                for (Marker marker : destinationMarkers) {
+//                                    builder.include(marker.getPosition());
+//                                }
+//
+//                                for (Marker marker : waypointMarkers) {
+//                                    builder.include(marker.getPosition());
+//                                }
+//                                LatLngBounds bounds = builder.build();
+//
+//
+//                                int padding = 20; // offset from edges of the map in pixels
+//                                CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, padding);
+//
+//
+//                                mMap.moveCamera(cu);
+//                            }
+
+                            mMap.addPolyline(new PolylineOptions()
+                                    .geodesic(true)
+                                    .color(Color.rgb(82, 219, 255))
+                                    .width(10)
+                                    .addAll(path));
+//
+//                            polylinePaths = new ArrayList<>();
+//
+//                            PolylineOptions polylineOptions = new PolylineOptions().
+//                                    geodesic(true).
+//                                    color(Color.rgb(82, 219, 255)).
+//                                    width(10);
+//
+//                                for (int i = 0; i < mapRoutes.size(); i++) {
+//                                    for (int k = 0; k < mapRoutes.get(i).points.size(); k++) {
+//                                        polylineOptions.add(mapRoutes.get(i).points.get(k));
+//                                    }
+//                                }
+//
+//                            originMarkers.add(mMap.addMarker(new MarkerOptions()
+//        //                   use for default marker image on map
+//                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+//        //                    use for show custom image on map
+//        //                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.start_blue))
+//                                    .title(mapRoutes.get(0).startAddress)
+//                                    .position(mapRoutes.get(0).startLocation)));
+//                            destinationMarkers.add(mMap.addMarker(new MarkerOptions()
+//                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+//                                    .title(mapRoutes.get(mapRoutes.size()-1).endAddress)
+//                                    .position(mapRoutes.get(mapRoutes.size()-1).endLocation)));
+//
+////                            waypointMarkers.add(mMap.addMarker(new MarkerOptions()
+////                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ROSE))
+////                                    .title(mapRoute.endAddress)
+////                                    .position(mapRoute.endLocation)));
+//
+//
+////                            for (int i = 0; i < mapRoute.points.size(); i++)
+////                                polylineOptions.add(mapRoute.points.get(i));
+//
+//                            polylinePaths.add(mMap.addPolyline(polylineOptions));
+//
+//
+//                            LatLngBounds.Builder builder = new LatLngBounds.Builder();
+//                            for (Marker marker : originMarkers) {
+//                                builder.include(marker.getPosition());
+//                            }
+//
+//                            for (Marker marker : destinationMarkers) {
+//                                builder.include(marker.getPosition());
+//                            }
+//
+////                            for (Marker marker : waypointMarkers) {
+////                                builder.include(marker.getPosition());
+////                            }
+//                            LatLngBounds bounds = builder.build();
+//
+////
+//                            int padding = 20; // offset from edges of the map in pixels
+//                            CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, padding);
+////
+////
+//                            mMap.moveCamera(cu);
+
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+
+//                                Log.i("parsing", "onResponse: " + location);
+
+                            }
+                }, new Response.ErrorListener() {
+
+        @Override
+        public void onErrorResponse(VolleyError error) {
+            // TODO: Handle error
+
+        }
+    });
+
+// Add the request to the RequestQueue.
+        queue.add(jsonObjectRequest);
+
+    }
+
+    private ArrayList<LatLng> decodePolyLine(final String poly) {
+        int len = poly.length();
+        int index = 0;
+        ArrayList<LatLng> decoded = new ArrayList<LatLng>();
+        int lat = 0;
+        int lng = 0;
+
+        while (index < len) {
+            int b;
+            int shift = 0;
+            int result = 0;
+            do {
+                b = poly.charAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+            lat += dlat;
+
+            shift = 0;
+            result = 0;
+            do {
+                b = poly.charAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+            lng += dlng;
+
+            decoded.add(new LatLng(
+                    lat / 100000d, lng / 100000d
+            ));
+        }
+
+        return decoded;
+    }
 
 }
+
+
 
 
 
