@@ -1,21 +1,17 @@
 package com.example.sightsee.ui;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.preference.PreferenceManager;
-//import android.support.annotation.NonNull;
-//import android.support.v4.app.ActivityCompat;
-//import android.support.v4.app.NotificationCompat;
-//import android.support.v4.app.NotificationManagerCompat;
-//import android.support.v7.app.AppCompatActivity;
-//import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -26,14 +22,12 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
-//import com.afollestad.materialdialogs.MaterialDialog;
-import com.akexorcist.googledirection.model.Waypoint;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
-import com.android.volley.toolbox.StringRequest;
+
 import com.android.volley.toolbox.Volley;
 import com.example.sightsee.R;
 import com.example.sightsee.model.DouglasPreucker;
@@ -111,9 +105,6 @@ public class MapsActivity extends AppCompatActivity
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener, LocationListener, SearchDirectionListener {
 
-//    private static final int NOTIFICATION_ID = 99;
-//    private static final int WEAR_REQUEST_CODE = 77;
-//    private static final int WEAR_REQUEST_CODE_2 = 88;
 
     private final static int ALL_PERMISSIONS_RESULT = 101;
     public static final int PLACE_AUTOCOMPLETE_FROM_PLACE_REQUEST_CODE = 1;
@@ -157,6 +148,7 @@ public class MapsActivity extends AppCompatActivity
     private AutocompleteSupportFragment etDestination;
     private Button btnFindPath;
     private Button btnSightsee;
+    private Button btnRoute;
 
     private int toleranceDistance;
     private Polyline line;
@@ -194,6 +186,8 @@ public class MapsActivity extends AppCompatActivity
         btnFindPath = (Button) findViewById(R.id.btnFindPath);
 
         btnSightsee = (Button) findViewById(R.id.sightsee);
+
+        btnRoute = (Button) findViewById(R.id.route);
 
         etOrigin = (AutocompleteSupportFragment)
                 getSupportFragmentManager().findFragmentById(R.id.etOrigin);
@@ -314,7 +308,7 @@ public class MapsActivity extends AppCompatActivity
         uiSettings.setCompassEnabled(true);
         uiSettings.setMyLocationButtonEnabled(true);
         uiSettings.setZoomControlsEnabled(true);
-        uiSettings.setMapToolbarEnabled(true);
+//        uiSettings.setMapToolbarEnabled(true);
     }
 
     public static class Route implements Serializable {
@@ -818,7 +812,9 @@ public class MapsActivity extends AppCompatActivity
 
                         }
                     });
+            mMap.getUiSettings().setMapToolbarEnabled(false);
             queue.add(jsonObjectRequest);
+
         }
 
     }
@@ -839,15 +835,14 @@ public class MapsActivity extends AppCompatActivity
     }
 //
     public void redrawRoute() {
-        //thinking of doing a volley request using the origin, destination, and waypointParser
 
         // Instantiate the RequestQueue.
         RequestQueue queue = Volley.newRequestQueue(this);
         String res = getString(R.string.google_maps_key);
-        String url = "https://maps.googleapis.com/maps/api/directions/json?&origin=place_id:" + origin + "&destination=place_id:" + destination + "&waypoints=" + waypoints + "&key=" + res;
+        final String url = "https://maps.googleapis.com/maps/api/directions/json?&origin=place_id:" + origin + "&destination=place_id:" + destination + "&waypoints=" + waypoints + "&key=" + res;
 
         Log.d("redraw", "redrawRoute: " + url);
-// Request a string response from the provided URL.
+
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest
                 (Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
 
@@ -861,7 +856,6 @@ public class MapsActivity extends AppCompatActivity
 
 
                             JSONObject overview_polylineJson = jsonRoute.getJSONObject("overview_polyline");
-//                            String encodedString = overview_polylineJson.getString("points");
                             JSONArray jsonLegs = jsonRoute.getJSONArray("legs");
 
                             for (int i = 0; i < jsonLegs.length(); i++) {
@@ -908,18 +902,6 @@ public class MapsActivity extends AppCompatActivity
                             waypointMarkers = new ArrayList<>();
                             destinationMarkers = new ArrayList<>();
 
-
-//                            for (MapRoute route : mapRoutes) {
-
-                                PolylineOptions polylineOptions = new PolylineOptions().
-                                        geodesic(true).
-                                        color(Color.rgb(82, 219, 255)).
-                                        width(10);
-
-//                                ArrayList<DouglasPreucker.Point> points = new ArrayList<>();
-//                                for (LatLng point : route.points)
-//                                    points.add(new DouglasPreucker.Point(point.latitude, point.longitude));
-
                                 originMarkers.add(mMap.addMarker(new MarkerOptions()
 //                   use for default marker image on map
                                         .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
@@ -932,104 +914,15 @@ public class MapsActivity extends AppCompatActivity
                                         .title(mapRoutes.get(mapRoutes.size()-1).endAddress)
                                         .position(mapRoutes.get(mapRoutes.size()-1).endLocation)));
 
-
-//                                for (int i = 0; i < route.points.size(); i++)
-//                                    polylineOptions.add(route.points.get(i));
-//
-//                                polylinePaths.add(mMap.addPolyline(polylineOptions));
-
-
-//                                LatLngBounds.Builder builder = new LatLngBounds.Builder();
-//                                for (Marker marker : originMarkers) {
-//                                    builder.include(marker.getPosition());
-//                                }
-//
-//                                for (Marker marker : destinationMarkers) {
-//                                    builder.include(marker.getPosition());
-//                                }
-//
-//                                for (Marker marker : waypointMarkers) {
-//                                    builder.include(marker.getPosition());
-//                                }
-//                                LatLngBounds bounds = builder.build();
-//
-//
-//                                int padding = 20; // offset from edges of the map in pixels
-//                                CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, padding);
-//
-//
-//                                mMap.moveCamera(cu);
-//                            }
-
                             mMap.addPolyline(new PolylineOptions()
                                     .geodesic(true)
                                     .color(Color.rgb(82, 219, 255))
                                     .width(10)
                                     .addAll(path));
-//
-//                            polylinePaths = new ArrayList<>();
-//
-//                            PolylineOptions polylineOptions = new PolylineOptions().
-//                                    geodesic(true).
-//                                    color(Color.rgb(82, 219, 255)).
-//                                    width(10);
-//
-//                                for (int i = 0; i < mapRoutes.size(); i++) {
-//                                    for (int k = 0; k < mapRoutes.get(i).points.size(); k++) {
-//                                        polylineOptions.add(mapRoutes.get(i).points.get(k));
-//                                    }
-//                                }
-//
-//                            originMarkers.add(mMap.addMarker(new MarkerOptions()
-//        //                   use for default marker image on map
-//                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
-//        //                    use for show custom image on map
-//        //                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.start_blue))
-//                                    .title(mapRoutes.get(0).startAddress)
-//                                    .position(mapRoutes.get(0).startLocation)));
-//                            destinationMarkers.add(mMap.addMarker(new MarkerOptions()
-//                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
-//                                    .title(mapRoutes.get(mapRoutes.size()-1).endAddress)
-//                                    .position(mapRoutes.get(mapRoutes.size()-1).endLocation)));
-//
-////                            waypointMarkers.add(mMap.addMarker(new MarkerOptions()
-////                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ROSE))
-////                                    .title(mapRoute.endAddress)
-////                                    .position(mapRoute.endLocation)));
-//
-//
-////                            for (int i = 0; i < mapRoute.points.size(); i++)
-////                                polylineOptions.add(mapRoute.points.get(i));
-//
-//                            polylinePaths.add(mMap.addPolyline(polylineOptions));
-//
-//
-//                            LatLngBounds.Builder builder = new LatLngBounds.Builder();
-//                            for (Marker marker : originMarkers) {
-//                                builder.include(marker.getPosition());
-//                            }
-//
-//                            for (Marker marker : destinationMarkers) {
-//                                builder.include(marker.getPosition());
-//                            }
-//
-////                            for (Marker marker : waypointMarkers) {
-////                                builder.include(marker.getPosition());
-////                            }
-//                            LatLngBounds bounds = builder.build();
-//
-////
-//                            int padding = 20; // offset from edges of the map in pixels
-//                            CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, padding);
-////
-////
-//                            mMap.moveCamera(cu);
 
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
-
-//                                Log.i("parsing", "onResponse: " + location);
 
                             }
                 }, new Response.ErrorListener() {
@@ -1043,6 +936,20 @@ public class MapsActivity extends AppCompatActivity
 
 // Add the request to the RequestQueue.
         queue.add(jsonObjectRequest);
+        mMap.getUiSettings().setMapToolbarEnabled(false);
+
+        btnRoute.setVisibility(View.VISIBLE);
+
+        btnRoute.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String uri = "https://www.google.com/maps/dir/?api=1&origin=" + start.latitude + "," + start.longitude + "&destination=" + end.latitude + "," + end.longitude + "&waypoints=" + waypoints + "&travelmode=driving&dir_action=navigate";
+//                String new_url = url.replace("www", "");
+                Intent intent = new Intent(android.content.Intent.ACTION_VIEW, Uri.parse(uri));
+                intent.setClassName("com.google.android.apps.maps", "com.google.android.maps.MapsActivity");
+                startActivity(intent);
+            }
+        });
 
     }
 
