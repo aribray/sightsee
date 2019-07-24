@@ -34,6 +34,7 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 
 import com.android.volley.toolbox.Volley;
+import com.example.sightsee.ProfileActivity;
 import com.example.sightsee.R;
 import com.example.sightsee.model.DouglasPreucker;
 import com.example.sightsee.model.IMaps;
@@ -91,6 +92,8 @@ import com.google.android.libraries.places.api.model.Place;
 import com.google.android.libraries.places.api.net.PlacesClient;
 import com.google.android.libraries.places.widget.AutocompleteSupportFragment;
 import com.google.android.libraries.places.widget.listener.PlaceSelectionListener;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.maps.DirectionsApiRequest;
 import com.google.maps.android.PolyUtil;
 import com.google.maps.model.DirectionsLeg;
@@ -141,13 +144,9 @@ public class MapsActivity extends AppCompatActivity
     private ArrayList<RouteBoxer.Box> boxes;
     private ArrayList<Polygon> boxPolygons;
     private ArrayList<Polygon> gridBoxes;
-    //    private DistanceDialog dialog;
     private float defaultZoom = 13;
     private TestingDialog testDialog;
-    //    private MaterialDialog myTestDialog;
-//    private MaterialDialog routeBoxProcessDialog;
     private String json;
-    //    private WearActionReceiver wearActionReceiver;
     private Context mContext;
     private AutocompleteSupportFragment etOrigin;
     private AutocompleteSupportFragment etDestination;
@@ -286,6 +285,15 @@ public class MapsActivity extends AppCompatActivity
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.user_menu, menu);
+
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user != null) {
+            // User is signed in
+            menu.getItem(0).setVisible(true);
+        } else {
+            // No user is signed in
+            menu.getItem(0).setVisible(false);
+        }
         return true;
     }
 
@@ -295,9 +303,13 @@ public class MapsActivity extends AppCompatActivity
         switch (item.getItemId()) {
             case R.id.account:
 //                getAccount();
+                //direct to user profile activity
+                Intent intent = new Intent(MapsActivity.this, ProfileActivity.class);
+                startActivity(intent);
                 return true;
             case R.id.save:
 //                saveRoute();
+                //direct to save route activity
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
