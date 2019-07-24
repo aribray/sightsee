@@ -13,6 +13,9 @@ import android.os.Environment;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -20,6 +23,8 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+
+import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 
 import com.android.volley.Request;
@@ -112,7 +117,7 @@ public class MapsActivity extends AppCompatActivity
     private long UPDATE_INTERVAL = 15000;  /* 15 secs */
     private long FASTEST_INTERVAL = 5000; /* 5 secs */
 
-    //    private Toolbar myToolbar;
+    private Toolbar myToolbar;
     private GoogleMap mMap;
     Location mLocation;
     private LocationRequest mLocationRequest;
@@ -159,6 +164,9 @@ public class MapsActivity extends AppCompatActivity
     private List<MapRoute> mapRoutes = new ArrayList<MapRoute>();
     private List<LatLng> path = new ArrayList();
 
+    public MapsActivity() {
+    }
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -172,6 +180,13 @@ public class MapsActivity extends AppCompatActivity
 
         toleranceDistance = distance;
 
+        setContentView(R.layout.activity_maps);
+
+        Toolbar myToolbar = (Toolbar) findViewById(R.id.my_toolbar);
+        setSupportActionBar(myToolbar);
+
+
+
         // Create an instance of GoogleAPIClient.
         if (this.mGoogleApiClient == null) {
             this.mGoogleApiClient = new GoogleApiClient.Builder(this)
@@ -181,7 +196,7 @@ public class MapsActivity extends AppCompatActivity
                     .build();
         }
 
-        setContentView(R.layout.activity_maps);
+
 
         btnFindPath = (Button) findViewById(R.id.btnFindPath);
 
@@ -191,9 +206,12 @@ public class MapsActivity extends AppCompatActivity
 
         etOrigin = (AutocompleteSupportFragment)
                 getSupportFragmentManager().findFragmentById(R.id.etOrigin);
+        etOrigin.setHint("Origin");
 
         etDestination = (AutocompleteSupportFragment)
                 getSupportFragmentManager().findFragmentById(R.id.etDestination);
+
+        etDestination.setHint("Destination");
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -249,6 +267,7 @@ public class MapsActivity extends AppCompatActivity
         btnFindPath.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                btnSightsee.setVisibility(View.VISIBLE);
                 sendRequest();
             }
         });
@@ -261,6 +280,28 @@ public class MapsActivity extends AppCompatActivity
             }
         });
 
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.user_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle item selection
+        switch (item.getItemId()) {
+            case R.id.account:
+//                getAccount();
+                return true;
+            case R.id.save:
+//                saveRoute();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
     }
 
 
@@ -322,19 +363,19 @@ public class MapsActivity extends AppCompatActivity
     @Override
     public void onJSONRouteLoaded(ArrayList<LatLng> route) {
 
-//        Route r = new Route(route);
+//        Route r = new Route(image1_6);
 //        Log.d("RouteBoxer", r.toString());
 //
 //        boolean simplify = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("pref_simplify", true);
 //        boolean runBoth = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("pref_runboth", false);
 //
-//        RouteBoxerTask routeBoxerTask = new RouteBoxerTask(route, this.distance, simplify, runBoth, this);
+//        RouteBoxerTask routeBoxerTask = new RouteBoxerTask(image1_6, this.distance, simplify, runBoth, this);
 //        routeBoxerTask.execute();
 //
 //        PolylineOptions polylineOptions = new PolylineOptions()
 //                .color(Color.RED)
 //                .width(8);
-//        for (LatLng point : route)
+//        for (LatLng point : image1_6)
 //            polylineOptions.add(point);
 //        if (this.routePolyline != null)
 //            this.routePolyline.remove();
@@ -435,7 +476,7 @@ public class MapsActivity extends AppCompatActivity
             else index = Integer.valueOf(myData);
 
             try {
-                FileOutputStream fos = new FileOutputStream(new File(getExternalFilesDir(filepath), "route-" + index + ".txt"));
+                FileOutputStream fos = new FileOutputStream(new File(getExternalFilesDir(filepath), "image1_6-" + index + ".txt"));
                 fos.write(json.getBytes());
                 fos.close();
 
@@ -780,11 +821,11 @@ public class MapsActivity extends AppCompatActivity
                                             if (waypointMarkers.contains(marker)) {
                                                 waypointMarkers.remove(marker);
                                                 Latlng.remove(marker.getPosition());
-                                                Toast.makeText(MapsActivity.this, "Removing waypoint from route", Toast.LENGTH_SHORT).show();
+                                                Toast.makeText(MapsActivity.this, "Removing waypoint from image1_6", Toast.LENGTH_SHORT).show();
                                             } else {
                                                 waypointMarkers.add(marker);
                                                 Latlng.add(marker.getPosition());
-                                                Toast.makeText(MapsActivity.this, "Adding waypoint to route", Toast.LENGTH_SHORT).show();
+                                                Toast.makeText(MapsActivity.this, "Adding waypoint to image1_6", Toast.LENGTH_SHORT).show();
                                             }
                                         }
                                     });
@@ -796,7 +837,7 @@ public class MapsActivity extends AppCompatActivity
 //                                            return true;
 //                                        }
 //                                    });
-//                                    Log.i("parsing", "onResponse: " + location);
+//                                    Log.i("parsing", "onResponse: " + image1_2);
 
                                 }
                             } catch (JSONException e) {
@@ -990,6 +1031,8 @@ public class MapsActivity extends AppCompatActivity
         return decoded;
     }
 
+
+
 }
 
 
@@ -1039,9 +1082,9 @@ public class MapsActivity extends AppCompatActivity
 //                bpNum = 0;
 //                IMaps vIMaps = new IMaps() {
 //                    @Override
-//                    public void onJSONRouteLoaded(ArrayList<LatLng> route) throws IOException {
+//                    public void onJSONRouteLoaded(ArrayList<LatLng> image1_6) throws IOException {
 //                        StringBuilder sb = new StringBuilder();
-//                        for(LatLng pos: route)
+//                        for(LatLng pos: image1_6)
 //                            sb.append(pos.latitude + ";" + pos.longitude + "\n");
 //                        FileHelper.write(MapsActivity.this, "path-v.txt", sb.toString(), true);
 //                        bpNum--;
@@ -1049,9 +1092,9 @@ public class MapsActivity extends AppCompatActivity
 //                };
 //                IMaps hIMaps = new IMaps() {
 //                    @Override
-//                    public void onJSONRouteLoaded(ArrayList<LatLng> route) throws IOException {
+//                    public void onJSONRouteLoaded(ArrayList<LatLng> image1_6) throws IOException {
 //                        StringBuilder sb = new StringBuilder();
-//                        for(LatLng pos: route)
+//                        for(LatLng pos: image1_6)
 //                            sb.append(pos.latitude + ";" + pos.longitude + "\n");
 //                        FileHelper.write(MapsActivity.this, "path-h.txt", sb.toString(), true);
 //                        bpNum--;
@@ -1059,9 +1102,9 @@ public class MapsActivity extends AppCompatActivity
 //                };
 //                IMaps dIMaps = new IMaps() {
 //                    @Override
-//                    public void onJSONRouteLoaded(ArrayList<LatLng> route) throws IOException {
+//                    public void onJSONRouteLoaded(ArrayList<LatLng> image1_6) throws IOException {
 //                        StringBuilder sb = new StringBuilder();
-//                        for(LatLng pos: route)
+//                        for(LatLng pos: image1_6)
 //                            sb.append(pos.latitude + ";" + pos.longitude + "\n");
 //                        FileHelper.write(MapsActivity.this, "path-d.txt", sb.toString(), true);
 //                        bpNum--;
@@ -1185,7 +1228,7 @@ public class MapsActivity extends AppCompatActivity
 //import android.content.Intent;
 //import android.content.pm.PackageManager;
 //import android.graphics.Color;
-//import android.location.Location;
+//import android.image1_2.Location;
 //import android.os.Build;
 //import android.os.Bundle;
 //import android.util.Log;
@@ -1206,10 +1249,10 @@ public class MapsActivity extends AppCompatActivity
 //import com.google.android.gms.common.GooglePlayServicesRepairableException;
 //import com.google.android.gms.common.api.GoogleApiClient;
 //import com.google.android.gms.common.api.Status;
-//import com.google.android.gms.location.LocationListener;
+//import com.google.android.gms.image1_2.LocationListener;
 //
-//import com.google.android.gms.location.LocationRequest;
-//import com.google.android.gms.location.LocationServices;
+//import com.google.android.gms.image1_2.LocationRequest;
+//import com.google.android.gms.image1_2.LocationServices;
 //import com.google.android.gms.maps.CameraUpdate;
 //import com.google.android.gms.maps.CameraUpdateFactory;
 //import com.google.android.gms.maps.GoogleMap;
@@ -1299,11 +1342,11 @@ public class MapsActivity extends AppCompatActivity
 //
 //        etOrigin.setOnPlaceSelectedListener(new PlaceSelectionListener() {
 //                                                            @Override
-//                                                            public void onPlaceSelected(Place place) {
-//                                                                // TODO: Get info about the selected place.
-//                                                                etOrigin.setText(place.getName());
-//                                                                origin = place.getId();
-//                                                                Log.i("Success", "Place: " + place.getAddress() + ", " + place.getLatLng());
+//                                                            public void onPlaceSelected(Place image2_1) {
+//                                                                // TODO: Get info about the selected image2_1.
+//                                                                etOrigin.setText(image2_1.getName());
+//                                                                origin = image2_1.getId();
+//                                                                Log.i("Success", "Place: " + image2_1.getAddress() + ", " + image2_1.getLatLng());
 //                                                                Log.i("Success", origin);
 //                                                            }
 //            @Override
@@ -1319,11 +1362,11 @@ public class MapsActivity extends AppCompatActivity
 //
 //        etDestination.setOnPlaceSelectedListener(new PlaceSelectionListener() {
 //            @Override
-//            public void onPlaceSelected(Place place) {
-//                // TODO: Get info about the selected place.
-//                etDestination.setText(place.getAddress());
-//                destination = place.getId();
-//                Log.i("Success", "Place: " + place.getName() + ", " + place.getId());
+//            public void onPlaceSelected(Place image2_1) {
+//                // TODO: Get info about the selected image2_1.
+//                etDestination.setText(image2_1.getAddress());
+//                destination = image2_1.getId();
+//                Log.i("Success", "Place: " + image2_1.getName() + ", " + image2_1.getId());
 //                Log.i("Success", destination);
 //            }
 //            @Override
@@ -1421,8 +1464,8 @@ public class MapsActivity extends AppCompatActivity
 ////        if (requestCode == PLACE_AUTOCOMPLETE_FROM_PLACE_REQUEST_CODE) {
 ////            if (resultCode == RESULT_OK) {
 ////                Toast.makeText(this, "I'm here", Toast.LENGTH_SHORT).show();
-////                Place place = Autocomplete.getPlaceFromIntent(data);
-////                String address = (String) place.getAddress();
+////                Place image2_1 = Autocomplete.getPlaceFromIntent(data);
+////                String address = (String) image2_1.getAddress();
 ////                etOrigin.setText(address, TextView.BufferType.EDITABLE);
 ////                } else if (resultCode == AutocompleteActivity.RESULT_ERROR) {
 ////                // TODO: Handle the error.
@@ -1433,8 +1476,8 @@ public class MapsActivity extends AppCompatActivity
 ////            }
 ////            } else if (requestCode == PLACE_AUTOCOMPLETE_TO_PLACE_REQUEST_CODE) {
 ////            if (resultCode == RESULT_OK) {
-////                Place place = Autocomplete.getPlaceFromIntent(data);
-////                String address = (String) place.getAddress();
+////                Place image2_1 = Autocomplete.getPlaceFromIntent(data);
+////                String address = (String) image2_1.getAddress();
 ////                etDestination.setText(address, TextView.BufferType.EDITABLE);
 ////            } else if (resultCode == AutocompleteActivity.RESULT_ERROR) {
 ////                // TODO: Handle the error.
@@ -1626,7 +1669,7 @@ public class MapsActivity extends AppCompatActivity
 //    }
 //
 //    @Override
-//    public void onLocationChanged(Location location) {
+//    public void onLocationChanged(Location image1_2) {
 //
 //
 //    }

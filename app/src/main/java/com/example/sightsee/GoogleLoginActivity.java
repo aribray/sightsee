@@ -10,6 +10,7 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.sightsee.ui.MapsActivity;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
@@ -36,6 +37,7 @@ public class GoogleLogin extends AppCompatActivity implements View.OnClickListen
     private TextView mDetailTextView;
 
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -48,9 +50,8 @@ public class GoogleLogin extends AppCompatActivity implements View.OnClickListen
 
         // Button listeners
         findViewById(R.id.sign_in_button).setOnClickListener(this);
-//        findViewById(R.id.signInButton).setOnClickListener(this);
-//        findViewById(R.id.signOutButton).setOnClickListener(this);
-//        findViewById(R.id.disconnectButton).setOnClickListener(this);
+//        findViewById(R.id.sign_out_button).setOnClickListener(this);
+
 
         // Configure sign-in to request the user's ID, email address, and basic
         // profile. ID and basic profile are included in DEFAULT_SIGN_IN.
@@ -81,15 +82,19 @@ public class GoogleLogin extends AppCompatActivity implements View.OnClickListen
 //        updateUI(account);
     }
 
-//    @Override
-//    public void onClick(View v) {
-//        switch (v.getId()) {
-//            case R.id.sign_in_button:
-//                signIn();
-//                break;
-//            // ...
-//        }
-//    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            // ...
+            case R.id.sign_out_button:
+                signOut();
+                break;
+            case R.id.sign_in_button:
+                signIn();
+                break;
+        }
+    }
 
     private void signIn() {
         Intent signInIntent = mGoogleSignInClient.getSignInIntent();
@@ -153,7 +158,7 @@ public class GoogleLogin extends AppCompatActivity implements View.OnClickListen
             Intent i = new Intent(getApplicationContext(), MapsActivity.class);
             startActivity(i);
             Toast.makeText(getApplicationContext(), "Logged in successfully!", Toast.LENGTH_SHORT).show();
-//            findViewById(R.id.sign_out_and_disconnect).setVisibility(View.VISIBLE);
+            findViewById(R.id.sign_out_button).setVisibility(View.VISIBLE);
         }
         else {
             Toast.makeText(getApplicationContext(), "Not Logged In", Toast.LENGTH_SHORT).show();
@@ -163,7 +168,7 @@ public class GoogleLogin extends AppCompatActivity implements View.OnClickListen
 //            mDetailTextView.setText(null);
 //
 //            findViewById(R.id.sign_in_button).setVisibility(View.VISIBLE);
-//            findViewById(R.id.sign_out_and_disconnect).setVisibility(View.GONE);
+//            findViewById(R.id.sign_out_button).setVisibility(View.GONE);
     }
 
     //TODO: implement a logout feature
@@ -177,37 +182,35 @@ public class GoogleLogin extends AppCompatActivity implements View.OnClickListen
                 new OnCompleteListener<Void>() {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
+                        Toast.makeText(getApplicationContext(),"Logged Out",Toast.LENGTH_SHORT).show();
                         updateUI(null);
                     }
                 });
     }
+//
+//    private void revokeAccess() {
+//        // Firebase sign out
+//        mAuth.signOut();
+//
+//        // Google revoke access
+//        mGoogleSignInClient.revokeAccess().addOnCompleteListener(this,
+//                new OnCompleteListener<Void>() {
+//                    @Override
+//                    public void onComplete(@NonNull Task<Void> task) {
+//                        updateUI(null);
+//                    }
+//                });
+//    }
 
-    private void revokeAccess() {
-        // Firebase sign out
-        mAuth.signOut();
-
-        // Google revoke access
-        mGoogleSignInClient.revokeAccess().addOnCompleteListener(this,
-                new OnCompleteListener<Void>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Void> task) {
-                        updateUI(null);
-                    }
-                });
-    }
-
-    @Override
-    public void onClick(View v) {
-        int i = v.getId();
-        if (i == R.id.sign_in_button) {
-            signIn();
-        }
-//        else if (i == R.id.signOutButton) {
+//    @Override
+//    public void onClick(View v) {
+//        int i = v.getId();
+//        if (i == R.id.sign_in_button) {
+//            signIn();
+//        } else if (i == R.id.sign_out_button) {
 //            signOut();
-//        } else if (i == R.id.disconnectButton) {
-//            revokeAccess();
 //        }
-    }
+//    }
 }
 
 
