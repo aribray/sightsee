@@ -97,13 +97,15 @@ public class ProfileActivity extends AppCompatActivity {
         });
 
         database = FirebaseFirestore.getInstance();
+//        CollectionReference docRef = database.collection("users").document(user.getUid()).collection("routes");
 
         database.collection("users").document(user.getUid()).collection("routes").get()
         .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {
                 QuerySnapshot document = task.getResult();
-                
+//                document.getDocuments().listIterator();
+
                 List<DocumentSnapshot> routes = document.getDocuments();
 
                 for (int i = 0; i < document.size(); i ++) {
@@ -121,10 +123,11 @@ public class ProfileActivity extends AppCompatActivity {
                     List<HashMap> origins = (List<HashMap>) route.get("origin");
                     List<HashMap> destinations = (List<HashMap>) route.get("destination");
                     List<HashMap> waypoints = (List<HashMap>) route.get("waypoints");
+//                    List<LatLng> waypointsList = List<LatLng>();
 
                     for (int k = 0; k < waypoints.size(); k ++) {
-                        String waypointLat =  waypoints.get(i).get("latitude").toString();
-                        String waypointLon = waypoints.get(i).get("longitude").toString();
+                        String waypointLat =  waypoints.get(k).get("latitude").toString();
+                        String waypointLon = waypoints.get(k).get("longitude").toString();
 
                         double waypoint1 = Double.valueOf(waypointLat);
                         double waypoint2 = Double.valueOf(waypointLon);
@@ -169,6 +172,28 @@ public class ProfileActivity extends AppCompatActivity {
 
             }
         });
+//        docRef.get()
+//                .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
+//                    @Override
+//                    public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
+//                        Log.d("success", "onSuccess: " + queryDocumentSnapshots.getDocuments().);
+//                }});
+
+//        docRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+//            @Override
+//            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+//                if (task.isSuccessful()) {
+//                    DocumentSnapshot document = task.getResult();
+//                    if (document.exists()) {
+//                        Log.d("success", "DocumentSnapshot data: " + document.getData());
+//                    } else {
+//                        Log.d("doesn't exist", "No such document");
+//                    }
+//                } else {
+//                    Log.d("error", "get failed with ", task.getException());
+//                }
+//            }
+//        });
 
     }
 
