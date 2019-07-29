@@ -5,9 +5,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
 import android.content.Intent;
+import android.graphics.PorterDuff;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -22,12 +24,17 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QuerySnapshot;
+
+import org.w3c.dom.Document;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -70,6 +77,8 @@ public class ProfileActivity extends AppCompatActivity {
         TextView profileFullName = findViewById(R.id.profileFullName);
         TextView profileUserName = findViewById(R.id.profileUserName);
 
+        final TextView routes = findViewById(R.id.routes);
+
 
         // set to current user
 
@@ -103,22 +112,43 @@ public class ProfileActivity extends AppCompatActivity {
         .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                QuerySnapshot document = task.getResult();
+                final QuerySnapshot[] document = {task.getResult()};
 //                document.getDocuments().listIterator();
 
-                List<DocumentSnapshot> routes = document.getDocuments();
+                routes.setText("User has " + document[0].size() + " routes");
 
-                for (int i = 0; i < document.size(); i ++) {
+                LinearLayout ll = (LinearLayout)findViewById(R.id.buttonLayout);
+
+                List<DocumentSnapshot> routes = document[0].getDocuments();
+
+                for (int i = 0; i < document[0].size(); i ++) {
+                    LinearLayout row = new LinearLayout(ProfileActivity.this);
+                    LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                    layoutParams.setMargins(10, 10, 10 ,10);
+
+
+//                    row.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+                    row.setGravity(Gravity.CENTER);
+
                     DocumentSnapshot route = routes.get(i);
+
                     Map<String, Object> routeData = route.getData();
                     String routeName = routeData.get("routeName").toString();
 
                     Button routeButton = new Button(ProfileActivity.this);
-                    routeButton.setText(routeName);
+                    final Button deleteButton = new Button(ProfileActivity.this);
+                    deleteButton.setTag(route.getId());
 
-                    LinearLayout ll = (LinearLayout)findViewById(R.id.buttonLayout);
-                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-                    ll.addView(routeButton, lp);
+                    routeButton.getBackground().setColorFilter(routeButton.getContext().getResources().getColor(R.color.aquamarine), PorterDuff.Mode.MULTIPLY);
+                    deleteButton.getBackground().setColorFilter(deleteButton.getContext().getResources().getColor(R.color.crimson), PorterDuff.Mode.MULTIPLY);
+
+
+                    routeButton.setText(routeName);
+                    deleteButton.setText(R.string.delete_route);
+
+                    row.addView(routeButton);
+                    row.addView(deleteButton);
 
                     List<HashMap> origins = (List<HashMap>) route.get("origin");
                     List<HashMap> destinations = (List<HashMap>) route.get("destination");
@@ -168,32 +198,36 @@ public class ProfileActivity extends AppCompatActivity {
                             startActivity(intent);
                         }
                     });
+
+                    deleteButton.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View view) {
+                            DocumentReference document = database.collection("users").document(user.getUid()).collection("routes").document(deleteButton.getTag().toString());
+
+                            document.delete()
+                                    .addOnSuccessListener(new OnSuccessListener<Void>() {
+                                        @Override
+                                        public void onSuccess(Void aVoid) {
+                                            Log.d("success", "DocumentSnapshot successfully deleted!");
+                                            Intent i = new Intent(getApplicationContext(), ProfileActivity.class);
+                                            startActivity(i);
+                                        }
+                                    })
+                                    .addOnFailureListener(new OnFailureListener() {
+                                        @Override
+                                        public void onFailure(@NonNull Exception e) {
+                                            Log.w("error", "Error deleting document", e);
+                                        }
+                                    });
+//                            Log.d("delete", "onClick: " + database.collection("users").document(user.getUid()).collection("routes").document(deleteButton.getTag().toString()));
+                        }
+                    });
+
+                    ll.addView(row);
                 }
 
             }
         });
-//        docRef.get()
-//                .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
-//                    @Override
-//                    public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
-//                        Log.d("success", "onSuccess: " + queryDocumentSnapshots.getDocuments().);
-//                }});
-
-//        docRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-//            @Override
-//            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-//                if (task.isSuccessful()) {
-//                    DocumentSnapshot document = task.getResult();
-//                    if (document.exists()) {
-//                        Log.d("success", "DocumentSnapshot data: " + document.getData());
-//                    } else {
-//                        Log.d("doesn't exist", "No such document");
-//                    }
-//                } else {
-//                    Log.d("error", "get failed with ", task.getException());
-//                }
-//            }
-//        });
 
     }
 
