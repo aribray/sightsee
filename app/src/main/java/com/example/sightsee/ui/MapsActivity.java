@@ -1,8 +1,11 @@
 package com.example.sightsee.ui;
 
+import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.location.Location;
 import android.net.Uri;
@@ -12,12 +15,19 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -27,6 +37,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 
+import com.akexorcist.googledirection.model.Line;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -36,6 +47,7 @@ import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.example.sightsee.ProfileActivity;
 import com.example.sightsee.R;
+import com.example.sightsee.SaveRouteActivity;
 import com.example.sightsee.model.DouglasPreucker;
 import com.example.sightsee.model.IMaps;
 import com.example.sightsee.model.MapDistance;
@@ -48,6 +60,7 @@ import com.example.sightsee.utils.SearchDirection;
 import com.example.sightsee.utils.SearchDirectionListener;
 import com.example.sightsee.utils.TestingDialog;
 import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.LocationListener;
@@ -83,17 +96,26 @@ import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 //import ap.mobile.routeboxer.helper.FileHelper;
 import com.example.sightsee.model.RouteBoxer;
 import com.google.android.libraries.places.api.Places;
+import com.google.android.libraries.places.api.model.PhotoMetadata;
 import com.google.android.libraries.places.api.model.Place;
+import com.google.android.libraries.places.api.net.FetchPhotoRequest;
+import com.google.android.libraries.places.api.net.FetchPlaceRequest;
 import com.google.android.libraries.places.api.net.PlacesClient;
 import com.google.android.libraries.places.widget.AutocompleteSupportFragment;
 import com.google.android.libraries.places.widget.listener.PlaceSelectionListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.IgnoreExtraProperties;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.gson.Gson;
 import com.google.maps.DirectionsApiRequest;
 import com.google.maps.android.PolyUtil;
 import com.google.maps.model.DirectionsLeg;
@@ -124,6 +146,8 @@ public class MapsActivity extends AppCompatActivity
     private GoogleMap mMap;
     Location mLocation;
     private LocationRequest mLocationRequest;
+
+    private DatabaseReference mDatabase;
 
     private int distance; // meter
 
@@ -162,6 +186,12 @@ public class MapsActivity extends AppCompatActivity
     boolean simplify = false;
     private List<MapRoute> mapRoutes = new ArrayList<MapRoute>();
     private List<LatLng> path = new ArrayList();
+    private PlacesClient placesClient;
+    HashMap<Marker, ArrayList<String>> hashMap = new HashMap<>();
+
+//    private HashMap<String, ArrayList<String>> hashMap;
+
+//    private ImageView imageView;
 
     public MapsActivity() {
     }
@@ -177,6 +207,7 @@ public class MapsActivity extends AppCompatActivity
             distance = extras.getInt("max_distance");
         }
 
+
         toleranceDistance = distance;
 
         setContentView(R.layout.activity_maps);
@@ -184,6 +215,8 @@ public class MapsActivity extends AppCompatActivity
         Toolbar myToolbar = (Toolbar) findViewById(R.id.my_toolbar);
         setSupportActionBar(myToolbar);
 
+
+        mDatabase = FirebaseDatabase.getInstance().getReference();
 
 
         // Create an instance of GoogleAPIClient.
@@ -196,7 +229,7 @@ public class MapsActivity extends AppCompatActivity
         }
 
 
-
+//        imageView = (ImageView) findViewById(R.id.image);
         btnFindPath = (Button) findViewById(R.id.btnFindPath);
 
         btnSightsee = (Button) findViewById(R.id.sightsee);
@@ -261,7 +294,7 @@ public class MapsActivity extends AppCompatActivity
         String res = getString(R.string.google_api_key);
         Places.initialize(getApplicationContext(), res);
 
-        PlacesClient placesClient = Places.createClient(this);
+        placesClient = Places.createClient(this);
 
         btnFindPath.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -290,9 +323,11 @@ public class MapsActivity extends AppCompatActivity
         if (user != null) {
             // User is signed in
             menu.getItem(0).setVisible(true);
+            menu.getItem(1).setVisible(true);
         } else {
             // No user is signed in
             menu.getItem(0).setVisible(false);
+            menu.getItem(1).setVisible(false);
         }
         return true;
     }
@@ -308,13 +343,45 @@ public class MapsActivity extends AppCompatActivity
                 startActivity(intent);
                 return true;
             case R.id.save:
-//                saveRoute();
-                //direct to save route activity
+                FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+
+                if (user != null) {
+                    if (path != null) {
+                        ArrayList<LatLng> arrayPath = new ArrayList<>();
+                        ArrayList<LatLng> originPoint = new ArrayList<>();
+                        ArrayList<LatLng> destinationPoint = new ArrayList<>();
+                        ArrayList<LatLng> waypointsPoint = new ArrayList<>();
+
+                        arrayPath.addAll(path);
+
+                        originPoint.add(originMarkers.get(0).getPosition());
+                        destinationPoint.add(destinationMarkers.get(0).getPosition());
+
+                        for (int i = 0; i < waypointMarkers.size(); i ++) {
+                            waypointsPoint.add(waypointMarkers.get(i).getPosition());
+                        }
+                        Log.i("checking", "onOptionsItemSelected: " + waypointsPoint);
+
+                        Intent saveIntent = new Intent(MapsActivity.this, SaveRouteActivity.class);
+                        saveIntent.putParcelableArrayListExtra("origin", originPoint);
+                        saveIntent.putParcelableArrayListExtra("destination", destinationPoint);
+                        saveIntent.putParcelableArrayListExtra("waypoints", waypointsPoint);
+                        startActivity(saveIntent);
+                    } else {
+                        Toast.makeText(this, "You must create a route before saving a route", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    Toast.makeText(this, "You must be logged in to save a route", Toast.LENGTH_SHORT).show();
+                }
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
     }
+
+
+
+
 
 
     protected void onStart() {
@@ -813,43 +880,48 @@ public class MapsActivity extends AppCompatActivity
                             try {
                                 JSONArray results = response.getJSONArray("results");
 
-                                for (int i = 0; i < results.length(); i++) {
+                                for (int k = 0; k < results.length(); k++) {
 
 
-                                    JSONObject result = results.getJSONObject(i);
-                                    ;
+                                    final JSONObject result = results.getJSONObject(k);
+
                                     JSONObject geometry = result.getJSONObject("geometry");
                                     String name = result.getString("name");
                                     JSONObject location = geometry.getJSONObject("location");
                                     double latitude = location.getDouble("lat");
                                     double longitude = location.getDouble("lng");
+                                    final String placeString = result.getString("place_id");
+                                    JSONArray photos = result.getJSONArray("photos");
+                                    JSONObject photoObject = photos.getJSONObject(0);
+                                    final String photo = photoObject.getString("photo_reference");
 
-                                    marker = mMap.addMarker(new MarkerOptions().position(new LatLng(latitude,longitude)).title(name).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ROSE)));
-                                    mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
-                                        @Override
-                                        public void onInfoWindowClick(Marker marker) {
+
+
+//                                    hashMap = new HashMap<>();
+
+                                    ArrayList<String> list = new ArrayList<>();
+                                    list.add(placeString);
+                                    list.add(photo);
+//                                    Log.i("success", "onResponse: "  + photo);
+
+                                    marker = mMap.addMarker(new MarkerOptions().position(new LatLng(latitude,longitude)).title(name)
+                                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ROSE)));
+
+                                    hashMap.put(marker, list);
+                                    mMap.setOnInfoWindowClickListener(marker -> {
 //                                            Toast.makeText(MapsActivity.this, "We're here", Toast.LENGTH_SHORT).show();
-
-                                            if (waypointMarkers.contains(marker)) {
-                                                waypointMarkers.remove(marker);
-                                                Latlng.remove(marker.getPosition());
-                                                Toast.makeText(MapsActivity.this, "Removing waypoint from image1_6", Toast.LENGTH_SHORT).show();
-                                            } else {
-                                                waypointMarkers.add(marker);
-                                                Latlng.add(marker.getPosition());
-                                                Toast.makeText(MapsActivity.this, "Adding waypoint to image1_6", Toast.LENGTH_SHORT).show();
-                                            }
-                                        }
+                                            marker.setTag(result);
+                                            showMyDialog(MapsActivity.this, marker);
+//                                            if (waypointMarkers.contains(marker)) {
+//                                                waypointMarkers.remove(marker);
+//                                                Latlng.remove(marker.getPosition());
+//                                                Toast.makeText(MapsActivity.this, "Removing waypoint from route", Toast.LENGTH_SHORT).show();
+//                                            } else {
+//                                                waypointMarkers.add(marker);
+//                                                Latlng.add(marker.getPosition());
+//                                                Toast.makeText(MapsActivity.this, "Adding waypoint to route", Toast.LENGTH_SHORT).show();
+//                                            }
                                     });
-
-//                                    mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
-//                                        @Override
-//                                        public boolean onMarkerClick(Marker marker) {
-//                                            waypointMarkers.add(marker);
-//                                            return true;
-//                                        }
-//                                    });
-//                                    Log.i("parsing", "onResponse: " + image1_2);
 
                                 }
                             } catch (JSONException e) {
@@ -870,6 +942,115 @@ public class MapsActivity extends AppCompatActivity
 
         }
 
+    }
+
+    private void showMyDialog(final Context context, final Marker marker) {
+
+//        RequestQueue queue = Volley.newRequestQueue(this);
+
+        final Dialog dialog = new Dialog(context);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.custom_dialog);
+        dialog.setCanceledOnTouchOutside(true);
+        dialog.setCancelable(true);
+
+        String photo = hashMap.get(marker).get(1);
+        String stringPlace = hashMap.get(marker).get(0);
+//
+        //Place Photos API call
+       final String photoUrl = "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=" + photo + "&key=" + getString(R.string.google_maps_key);
+
+
+       List<Place.Field> placeFields = Arrays.asList(Place.Field.PHOTO_METADATAS, Place.Field.RATING, Place.Field.NAME, Place.Field.WEBSITE_URI, Place.Field.OPENING_HOURS);
+
+        FetchPlaceRequest request = FetchPlaceRequest.builder(stringPlace, placeFields).build();
+
+        ImageView imageView = (ImageView) new ImageView(context);
+        placesClient.fetchPlace(request).addOnSuccessListener((response) -> {
+
+            Place requestedPlace = response.getPlace();
+
+            // Get the photo metadata.
+            PhotoMetadata photoMetadata = requestedPlace.getPhotoMetadatas().get(0);
+
+            // Get the attribution text.
+            String attributions = photoMetadata.getAttributions();
+
+
+            // Create a FetchPhotoRequest.
+            FetchPhotoRequest photoRequest = FetchPhotoRequest.builder(photoMetadata)
+                    .setMaxWidth(500) // Optional.
+                    .setMaxHeight(300) // Optional.
+                    .build();
+            placesClient.fetchPhoto(photoRequest).addOnSuccessListener((fetchPhotoResponse) -> {
+                Bitmap bitmap = fetchPhotoResponse.getBitmap();
+                imageView.setImageBitmap(bitmap);
+            }).addOnFailureListener((exception) -> {
+                if (exception instanceof ApiException) {
+                    ApiException apiException = (ApiException) exception;
+                    int statusCode = apiException.getStatusCode();
+                    // Handle error with given status code.
+                    Log.e("error", "Place not found: " + exception.getMessage());
+                }
+            });
+        }).addOnFailureListener((exception) -> {
+            if (exception instanceof ApiException) {
+                ApiException apiException = (ApiException) exception;
+                int statusCode = apiException.getStatusCode();
+                // Handle error with given status code.
+                Log.e("error", "Place not found: " + exception.getMessage());
+            }
+        });
+
+
+
+
+        TextView markerTitle = (TextView) dialog.findViewById(R.id.txtTitle);
+//        TextView ratingText = (TextView) dialog.findViewById(R.id.rating);
+
+        markerTitle.setText(marker.getTitle());
+//        ratingText.setText(marker);
+//        ListView listView = (ListView) dialog.findViewById(R.id.listView);
+//
+//        listView.addView(imageView);
+
+
+        Button btnBtmLeft = (Button) dialog.findViewById(R.id.btnBtmLeft);
+        Button btnBtmRight = (Button) dialog.findViewById(R.id.btnBtmRight);
+
+        btnBtmLeft.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+
+        btnBtmRight.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (waypointMarkers.contains(marker)) {
+                    waypointMarkers.remove(marker);
+                    Latlng.remove(marker.getPosition());
+                    Toast.makeText(MapsActivity.this, "Removing waypoint from route", Toast.LENGTH_SHORT).show();
+                } else {
+                    waypointMarkers.add(marker);
+                    Latlng.add(marker.getPosition());
+                    Toast.makeText(MapsActivity.this, "Adding waypoint to route", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        DisplayMetrics displayMetrics = context.getResources().getDisplayMetrics();
+        int dialogWidth = (int)(displayMetrics.widthPixels * 0.60);
+        int dialogHeight = (int)(displayMetrics.heightPixels * 0.40);
+        dialog.getWindow().setLayout(dialogWidth, dialogHeight);
+
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.setMargins(0, 125 ,0, 0);
+        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+//        layoutParams.setMargins(5,10,5,10);
+        dialog.addContentView(imageView,params);
+        dialog.show();
     }
 //
     public void waypointParser(ArrayList waypointMarkers) {
@@ -952,7 +1133,7 @@ public class MapsActivity extends AppCompatActivity
 
                             polylinePaths = new ArrayList<>();
                             originMarkers = new ArrayList<>();
-                            waypointMarkers = new ArrayList<>();
+//                            waypointMarkers = new ArrayList<>();
                             destinationMarkers = new ArrayList<>();
 
                                 originMarkers.add(mMap.addMarker(new MarkerOptions()
