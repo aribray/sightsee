@@ -956,6 +956,7 @@ public class MapsActivity extends AppCompatActivity
 
         String photo = hashMap.get(marker).get(1);
         String stringPlace = hashMap.get(marker).get(0);
+//        LinearLayout ll = (LinearLayout) this.findViewById(R.id.dialog);
 //
         //Place Photos API call
        final String photoUrl = "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=" + photo + "&key=" + getString(R.string.google_maps_key);
@@ -966,9 +967,14 @@ public class MapsActivity extends AppCompatActivity
         FetchPlaceRequest request = FetchPlaceRequest.builder(stringPlace, placeFields).build();
 
         ImageView imageView = (ImageView) new ImageView(context);
+        final TextView ratingView = new TextView(this);
         placesClient.fetchPlace(request).addOnSuccessListener((response) -> {
 
             Place requestedPlace = response.getPlace();
+
+
+            ratingView.setText(getString(R.string.rating) + " " + requestedPlace.getRating().toString());
+
 
             // Get the photo metadata.
             PhotoMetadata photoMetadata = requestedPlace.getPhotoMetadatas().get(0);
@@ -1004,7 +1010,6 @@ public class MapsActivity extends AppCompatActivity
 
 
 
-
         TextView markerTitle = (TextView) dialog.findViewById(R.id.txtTitle);
 //        TextView ratingText = (TextView) dialog.findViewById(R.id.rating);
 
@@ -1014,16 +1019,16 @@ public class MapsActivity extends AppCompatActivity
 //
 //        listView.addView(imageView);
 
-
-        Button btnBtmLeft = (Button) dialog.findViewById(R.id.btnBtmLeft);
+//
+//        Button btnBtmLeft = (Button) dialog.findViewById(R.id.btnBtmLeft);
         Button btnBtmRight = (Button) dialog.findViewById(R.id.btnBtmRight);
 
-        btnBtmLeft.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                dialog.dismiss();
-            }
-        });
+//        btnBtmLeft.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                dialog.dismiss();
+//            }
+//        });
 
         btnBtmRight.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -1031,10 +1036,12 @@ public class MapsActivity extends AppCompatActivity
                 if (waypointMarkers.contains(marker)) {
                     waypointMarkers.remove(marker);
                     Latlng.remove(marker.getPosition());
+                    btnBtmRight.setText("Add to Route");
                     Toast.makeText(MapsActivity.this, "Removing waypoint from route", Toast.LENGTH_SHORT).show();
                 } else {
                     waypointMarkers.add(marker);
                     Latlng.add(marker.getPosition());
+                    btnBtmRight.setText("Remove from Route");
                     Toast.makeText(MapsActivity.this, "Adding waypoint to route", Toast.LENGTH_SHORT).show();
                 }
             }
@@ -1045,11 +1052,14 @@ public class MapsActivity extends AppCompatActivity
         int dialogHeight = (int)(displayMetrics.heightPixels * 0.40);
         dialog.getWindow().setLayout(dialogWidth, dialogHeight);
 
+
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         params.setMargins(0, 125 ,0, 0);
+
         LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-//        layoutParams.setMargins(5,10,5,10);
+        layoutParams.setMargins(50,370,0,10);
         dialog.addContentView(imageView,params);
+        dialog.addContentView(ratingView, layoutParams);
         dialog.show();
     }
 //
