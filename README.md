@@ -10,6 +10,9 @@ Using Sightsee is easy. All you need is an Android phone!
 
 ### Now let's get into how to navigate the app.
 
+![tutorial_image]
+(app/src/main/res/sightsee/Screenshot_20191006-162102.png)
+
 ## Plan My Whole Trip
 If you select this option, you can plan your entire road trip from start to finish.
 1. Select the number of miles you are willing to travel. **You can choose to explore up to 30 miles from your planned route**.
