@@ -10,6 +10,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -22,7 +23,6 @@ import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -33,8 +33,6 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QuerySnapshot;
-
-import org.w3c.dom.Document;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -83,8 +81,10 @@ public class ProfileActivity extends AppCompatActivity {
         // set to current user
 
         final FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        profileFullName.setText(((FirebaseUser) user).getDisplayName());
-        profileUserName.setText(user.getEmail());
+        if (user != null) {
+            profileFullName.setText(((FirebaseUser) user).getDisplayName());
+            profileUserName.setText(user.getEmail());
+        }
 
         btnLogOut = (Button) findViewById(R.id.btnLogOut);
 
@@ -106,14 +106,12 @@ public class ProfileActivity extends AppCompatActivity {
         });
 
         database = FirebaseFirestore.getInstance();
-//        CollectionReference docRef = database.collection("users").document(user.getUid()).collection("routes");
 
         database.collection("users").document(user.getUid()).collection("routes").get()
         .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {
                 final QuerySnapshot[] document = {task.getResult()};
-//                document.getDocuments().listIterator();
 
                 routes.setText("User has " + document[0].size() + " routes");
 
@@ -125,9 +123,6 @@ public class ProfileActivity extends AppCompatActivity {
                     LinearLayout row = new LinearLayout(ProfileActivity.this);
                     LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
                     layoutParams.setMargins(10, 10, 10 ,10);
-
-
-//                    row.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
                     row.setGravity(Gravity.CENTER);
 
@@ -153,7 +148,6 @@ public class ProfileActivity extends AppCompatActivity {
                     List<HashMap> origins = (List<HashMap>) route.get("origin");
                     List<HashMap> destinations = (List<HashMap>) route.get("destination");
                     List<HashMap> waypoints = (List<HashMap>) route.get("waypoints");
-//                    List<LatLng> waypointsList = List<LatLng>();
 
                     for (int k = 0; k < waypoints.size(); k ++) {
                         String waypointLat =  waypoints.get(k).get("latitude").toString();
@@ -182,7 +176,6 @@ public class ProfileActivity extends AppCompatActivity {
                    double destination1 = Double.valueOf(destinationLat);
                    double destination2 = Double.valueOf(destinationLon);
 
-//                    Object origin = routeData.get("origin");
                     final LatLng originPoint = new LatLng(origin1, origin2);
                     final LatLng destinationPoint = new LatLng(destination1, destination2);
 
@@ -192,7 +185,6 @@ public class ProfileActivity extends AppCompatActivity {
                         @Override
                         public void onClick(View view) {
                             String uri = "https://www.google.com/maps/dir/?api=1&origin=" + originPoint.latitude + "," + originPoint.longitude + "&destination=" + destinationPoint.latitude + "," + destinationPoint.longitude + "&waypoints=" + waypointString + "&travelmode=driving&dir_action=navigate";
-//                String new_url = url.replace("www", "");
                             Intent intent = new Intent(android.content.Intent.ACTION_VIEW, Uri.parse(uri));
                             intent.setClassName("com.google.android.apps.maps", "com.google.android.maps.MapsActivity");
                             startActivity(intent);
@@ -219,7 +211,6 @@ public class ProfileActivity extends AppCompatActivity {
                                             Log.w("error", "Error deleting document", e);
                                         }
                                     });
-//                            Log.d("delete", "onClick: " + database.collection("users").document(user.getUid()).collection("routes").document(deleteButton.getTag().toString()));
                         }
                     });
 
@@ -229,6 +220,16 @@ public class ProfileActivity extends AppCompatActivity {
             }
         });
 
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()){
+            case android.R.id.home:
+                onBackPressed();
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     public void waypointParser(ArrayList waypointsList) {

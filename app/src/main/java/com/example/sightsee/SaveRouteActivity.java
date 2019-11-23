@@ -13,7 +13,6 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.sightsee.ui.MapsActivity;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -21,13 +20,11 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.IgnoreExtraProperties;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class SaveRouteActivity extends AppCompatActivity {
@@ -89,26 +86,26 @@ public class SaveRouteActivity extends AppCompatActivity {
 
         String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
-        // Add a new document with a generated ID
-//        List routes = (List)
-                database.collection("users")
-                .document(uid)
-                        .collection("routes").add(route)
+        database.collection("users")
+        .document(uid)
+                .collection("routes").add(route)
 
-                .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
-                                          @Override
-                                          public void onSuccess(DocumentReference documentReference) {
-                                              Toast.makeText(SaveRouteActivity.this, "Successfully added " + routeName.getText().toString() + " to route", Toast.LENGTH_SHORT).show();
-                                              Log.d("success", "DocumentSnapshot added with ID: " + documentReference.getId());
-                                          }})
+        .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                                  @Override
+                                  public void onSuccess(DocumentReference documentReference) {
+                                      Toast.makeText(SaveRouteActivity.this, "Successfully added " + routeName.getText().toString() + " to route", Toast.LENGTH_SHORT).show();
+                                      Log.d("success", "DocumentSnapshot added with ID: " + documentReference.getId());
+                                      Intent i = new Intent(SaveRouteActivity.this, ProfileActivity.class);
+                                      startActivity(i);
+                                  }})
 
 
-                .addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        Log.w("error", "Error adding document", e);
-                    }
-                });
+        .addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                Log.w("error", "Error adding document", e);
+            }
+        });
 
     }
 }

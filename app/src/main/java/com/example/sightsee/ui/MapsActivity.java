@@ -48,7 +48,7 @@ import com.android.volley.toolbox.Volley;
 import com.example.sightsee.ProfileActivity;
 import com.example.sightsee.R;
 import com.example.sightsee.SaveRouteActivity;
-import com.example.sightsee.model.DouglasPreucker;
+import com.example.sightsee.model.DouglasPeucker;
 import com.example.sightsee.model.IMaps;
 import com.example.sightsee.model.MapDistance;
 import com.example.sightsee.model.MapDuration;
@@ -188,10 +188,10 @@ public class MapsActivity extends AppCompatActivity
     private List<LatLng> path = new ArrayList();
     private PlacesClient placesClient;
     HashMap<Marker, ArrayList<String>> hashMap = new HashMap<>();
+    private UiSettings uiSettings;
 
-//    private HashMap<String, ArrayList<String>> hashMap;
+    private List<Marker> markerKeys;
 
-//    private ImageView imageView;
 
     public MapsActivity() {
     }
@@ -228,8 +228,6 @@ public class MapsActivity extends AppCompatActivity
                     .build();
         }
 
-
-//        imageView = (ImageView) findViewById(R.id.image);
         btnFindPath = (Button) findViewById(R.id.btnFindPath);
 
         btnSightsee = (Button) findViewById(R.id.sightsee);
@@ -253,7 +251,6 @@ public class MapsActivity extends AppCompatActivity
         this.mContext = this;
 
 //         Initialize the Origin and Destination AutocompleteSupportFragments.
-
         etOrigin.setPlaceFields(Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG));
 
         etOrigin.setOnPlaceSelectedListener(new PlaceSelectionListener() {
@@ -271,7 +268,6 @@ public class MapsActivity extends AppCompatActivity
                 Log.i("error", "An error occurred: " + status);
             }
         });
-
 
         etDestination.setPlaceFields(Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG));
 
@@ -299,14 +295,19 @@ public class MapsActivity extends AppCompatActivity
         btnFindPath.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                btnSightsee.setVisibility(View.VISIBLE);
-                sendRequest();
+                if (origin != null && destination != null) {
+                    btnSightsee.setVisibility(View.VISIBLE);
+                    btnFindPath.setVisibility(View.GONE);
+                    sendRequest();
+                } else
+                    Toast.makeText(MapsActivity.this, "Please enter origin and destination address!", Toast.LENGTH_SHORT).show();
             }
         });
 
         btnSightsee.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                btnSightsee.setVisibility(View.GONE);
                 waypointParser(waypointMarkers);
                 redrawRoute();
             }
@@ -337,7 +338,6 @@ public class MapsActivity extends AppCompatActivity
         // Handle item selection
         switch (item.getItemId()) {
             case R.id.account:
-//                getAccount();
                 //direct to user profile activity
                 Intent intent = new Intent(MapsActivity.this, ProfileActivity.class);
                 startActivity(intent);
@@ -346,7 +346,7 @@ public class MapsActivity extends AppCompatActivity
                 FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
 
                 if (user != null) {
-                    if (path != null) {
+                    if (path.size() != 0) {
                         ArrayList<LatLng> arrayPath = new ArrayList<>();
                         ArrayList<LatLng> originPoint = new ArrayList<>();
                         ArrayList<LatLng> destinationPoint = new ArrayList<>();
@@ -360,8 +360,6 @@ public class MapsActivity extends AppCompatActivity
                         for (int i = 0; i < waypointMarkers.size(); i ++) {
                             waypointsPoint.add(waypointMarkers.get(i).getPosition());
                         }
-                        Log.i("checking", "onOptionsItemSelected: " + waypointsPoint);
-
                         Intent saveIntent = new Intent(MapsActivity.this, SaveRouteActivity.class);
                         saveIntent.putParcelableArrayListExtra("origin", originPoint);
                         saveIntent.putParcelableArrayListExtra("destination", destinationPoint);
@@ -378,11 +376,6 @@ public class MapsActivity extends AppCompatActivity
                 return super.onOptionsItemSelected(item);
         }
     }
-
-
-
-
-
 
     protected void onStart() {
         this.mGoogleApiClient.connect();
@@ -418,17 +411,15 @@ public class MapsActivity extends AppCompatActivity
             // for ActivityCompat#requestPermissions for more details.
             ActivityCompat.requestPermissions(this, new String[]{ACCESS_FINE_LOCATION}, 99);
             return;
+
         }
         this.mMap.setMyLocationEnabled(true);
-//        this.mMap.setOnMapLongClickListener(this);
-//        this.mMap.setOnInfoWindowClickListener(this);
 
         UiSettings uiSettings = this.mMap.getUiSettings();
 
         uiSettings.setCompassEnabled(true);
         uiSettings.setMyLocationButtonEnabled(true);
         uiSettings.setZoomControlsEnabled(true);
-//        uiSettings.setMapToolbarEnabled(true);
     }
 
     public static class Route implements Serializable {
@@ -441,43 +432,11 @@ public class MapsActivity extends AppCompatActivity
 
     @Override
     public void onJSONRouteLoaded(ArrayList<LatLng> route) {
-
-//        Route r = new Route(image1_6);
-//        Log.d("RouteBoxer", r.toString());
-//
-//        boolean simplify = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("pref_simplify", true);
-//        boolean runBoth = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("pref_runboth", false);
-//
-//        RouteBoxerTask routeBoxerTask = new RouteBoxerTask(image1_6, this.distance, simplify, runBoth, this);
-//        routeBoxerTask.execute();
-//
-//        PolylineOptions polylineOptions = new PolylineOptions()
-//                .color(Color.RED)
-//                .width(8);
-//        for (LatLng point : image1_6)
-//            polylineOptions.add(point);
-//        if (this.routePolyline != null)
-//            this.routePolyline.remove();
-//        this.routePolyline = this.mMap.addPolyline(polylineOptions);
-//        //this.routePolyline.setPattern(Arrays.asList(new Dash(30), new Gap(10)));
-//        if (this.boxPolygons == null)
-//            this.boxPolygons = new ArrayList<>();
-//        else {
-//            for (Polygon polygon : this.boxPolygons) {
-//                polygon.remove();
-//            }
-//        }
-//
-//        if(this.gridBoxes != null) {
-//            for(Polygon polygon: this.gridBoxes)
-//                polygon.remove();
-//        }
     }
 
 
     @Override
     public void routeJsonObtained(String json) {
-
         this.json = json;
         if (isStoragePermissionGranted())
             this.writeJsonToFile(json);
@@ -528,8 +487,6 @@ public class MapsActivity extends AppCompatActivity
 
     private void writeJsonToFile(String json) {
         if (isExternalStorageAvailable() && !isExternalStorageReadOnly()) {
-            //saveButton.setEnabled(false);
-
             String filepath = "RouteBoxer";
             String indexFilename = "idx.txt";
             int index = 0;
@@ -555,7 +512,7 @@ public class MapsActivity extends AppCompatActivity
             else index = Integer.valueOf(myData);
 
             try {
-                FileOutputStream fos = new FileOutputStream(new File(getExternalFilesDir(filepath), "image1_6-" + index + ".txt"));
+                FileOutputStream fos = new FileOutputStream(new File(getExternalFilesDir(filepath), "route-" + index + ".txt"));
                 fos.write(json.getBytes());
                 fos.close();
 
@@ -574,10 +531,8 @@ public class MapsActivity extends AppCompatActivity
 
     @Override
     public void onRouteBoxerTaskComplete(ArrayList<RouteBoxer.Box> boxes) {
-        Toast.makeText(this, "I'm here", Toast.LENGTH_SHORT).show();
         this.draw(boxes, Color.argb(128, 255, 0, 0), Color.argb(15, 255, 0, 0));
     }
-
 
     @Override
     public void onRouteBoxerMessage(String message) {
@@ -783,13 +738,12 @@ public class MapsActivity extends AppCompatActivity
                     color(Color.rgb(82, 219, 255)).
                     width(10);
 
-            ArrayList<DouglasPreucker.Point> points = new ArrayList<>();
+            ArrayList<DouglasPeucker.Point> points = new ArrayList<>();
             for (LatLng point : mapRoute.points)
-                points.add(new DouglasPreucker.Point(point.latitude, point.longitude));
+                points.add(new DouglasPeucker.Point(point.latitude, point.longitude));
 
-            DouglasPreucker douglasPreucker = new DouglasPreucker();
+//            DouglasPeucker douglasPeucker = new DouglasPeucker();
             this.toleranceDistance = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString("pref_key_tolerance_distance", "20000"));
-//            ArrayList<DouglasPreucker.Point> simplifiedRoute = douglasPreucker.simplify(points, this.toleranceDistance);
 
             if (this.boxPolygons == null)
                 this.boxPolygons = new ArrayList<>();
@@ -799,9 +753,8 @@ public class MapsActivity extends AppCompatActivity
                 }
             }
 
-//            ArrayList<LatLng> sRoute = new ArrayList<>();
-//            for (DouglasPreucker.Point point : simplifiedRoute)
-//                sRoute.add(new LatLng(point.latitude, point.longitude));
+            LinearLayout linearLayout = findViewById(R.id.infoLayout);
+            linearLayout.setVisibility(View.VISIBLE);
 
             ((TextView) findViewById(R.id.tvDuration)).setText(mapRoute.mapDuration.txtDuration);
             ((TextView) findViewById(R.id.tvDistance)).setText(mapRoute.mapDistance.txtDistance);
@@ -895,32 +848,17 @@ public class MapsActivity extends AppCompatActivity
                                     JSONObject photoObject = photos.getJSONObject(0);
                                     final String photo = photoObject.getString("photo_reference");
 
-
-
-//                                    hashMap = new HashMap<>();
-
                                     ArrayList<String> list = new ArrayList<>();
                                     list.add(placeString);
                                     list.add(photo);
-//                                    Log.i("success", "onResponse: "  + photo);
 
                                     marker = mMap.addMarker(new MarkerOptions().position(new LatLng(latitude,longitude)).title(name)
                                             .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ROSE)));
 
                                     hashMap.put(marker, list);
                                     mMap.setOnInfoWindowClickListener(marker -> {
-//                                            Toast.makeText(MapsActivity.this, "We're here", Toast.LENGTH_SHORT).show();
                                             marker.setTag(result);
                                             showMyDialog(MapsActivity.this, marker);
-//                                            if (waypointMarkers.contains(marker)) {
-//                                                waypointMarkers.remove(marker);
-//                                                Latlng.remove(marker.getPosition());
-//                                                Toast.makeText(MapsActivity.this, "Removing waypoint from route", Toast.LENGTH_SHORT).show();
-//                                            } else {
-//                                                waypointMarkers.add(marker);
-//                                                Latlng.add(marker.getPosition());
-//                                                Toast.makeText(MapsActivity.this, "Adding waypoint to route", Toast.LENGTH_SHORT).show();
-//                                            }
                                     });
 
                                 }
@@ -940,14 +878,13 @@ public class MapsActivity extends AppCompatActivity
             mMap.getUiSettings().setMapToolbarEnabled(false);
             queue.add(jsonObjectRequest);
 
+           markerKeys = new ArrayList<>(hashMap.keySet());
+
         }
 
     }
 
     private void showMyDialog(final Context context, final Marker marker) {
-
-//        RequestQueue queue = Volley.newRequestQueue(this);
-
         final Dialog dialog = new Dialog(context);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setContentView(R.layout.custom_dialog);
@@ -956,7 +893,6 @@ public class MapsActivity extends AppCompatActivity
 
         String photo = hashMap.get(marker).get(1);
         String stringPlace = hashMap.get(marker).get(0);
-//        LinearLayout ll = (LinearLayout) this.findViewById(R.id.dialog);
 //
         //Place Photos API call
        final String photoUrl = "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=" + photo + "&key=" + getString(R.string.google_maps_key);
@@ -1008,27 +944,11 @@ public class MapsActivity extends AppCompatActivity
             }
         });
 
-
-
         TextView markerTitle = (TextView) dialog.findViewById(R.id.txtTitle);
-//        TextView ratingText = (TextView) dialog.findViewById(R.id.rating);
 
         markerTitle.setText(marker.getTitle());
-//        ratingText.setText(marker);
-//        ListView listView = (ListView) dialog.findViewById(R.id.listView);
-//
-//        listView.addView(imageView);
 
-//
-//        Button btnBtmLeft = (Button) dialog.findViewById(R.id.btnBtmLeft);
         Button btnBtmRight = (Button) dialog.findViewById(R.id.btnBtmRight);
-
-//        btnBtmLeft.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                dialog.dismiss();
-//            }
-//        });
 
         btnBtmRight.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -1057,12 +977,12 @@ public class MapsActivity extends AppCompatActivity
         params.setMargins(0, 125 ,0, 0);
 
         LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        layoutParams.setMargins(50,370,0,10);
+        layoutParams.setMargins(50,430,0,10);
         dialog.addContentView(imageView,params);
         dialog.addContentView(ratingView, layoutParams);
         dialog.show();
     }
-//
+
     public void waypointParser(ArrayList waypointMarkers) {
         if (waypointMarkers == null || waypointMarkers.size() == 0) {
             waypoints = "";
@@ -1077,7 +997,7 @@ public class MapsActivity extends AppCompatActivity
             waypoints.replace("|", "via:");
         }
     }
-//
+
     public void redrawRoute() {
 
         // Instantiate the RequestQueue.
@@ -1122,6 +1042,7 @@ public class MapsActivity extends AppCompatActivity
                                 mapRoutes.add(mapRoute);
                             }
 
+
                             if (originMarkers != null) {
                                 for (Marker marker : originMarkers) {
                                     marker.remove();
@@ -1143,7 +1064,7 @@ public class MapsActivity extends AppCompatActivity
 
                             polylinePaths = new ArrayList<>();
                             originMarkers = new ArrayList<>();
-//                            waypointMarkers = new ArrayList<>();
+//                           waypointMarkers = new ArrayList<>();
                             destinationMarkers = new ArrayList<>();
 
                                 originMarkers.add(mMap.addMarker(new MarkerOptions()
@@ -1181,6 +1102,8 @@ public class MapsActivity extends AppCompatActivity
 // Add the request to the RequestQueue.
         queue.add(jsonObjectRequest);
         mMap.getUiSettings().setMapToolbarEnabled(false);
+
+
 
         btnRoute.setVisibility(View.VISIBLE);
 
@@ -1234,753 +1157,4 @@ public class MapsActivity extends AppCompatActivity
         return decoded;
     }
 
-
-
 }
-
-
-
-
-
-//    public void connectClient()
-//    {
-//        mGoogleApiClient = new GoogleApiClient.Builder(this)
-//                .addApi(LocationServices.API)
-//                .addConnectionCallbacks(this)
-//                .addOnConnectionFailedListener(this)
-//                .build();
-//    }
-//
-//    private ArrayList findUnAskedPermissions(ArrayList wanted) {
-//        ArrayList result = new ArrayList();
-//
-//        for (Object perm : wanted) {
-//            if (!hasPermission((String) perm)) {
-//                result.add(perm);
-//            }
-//        }
-//
-//        return result;
-//    }
-
-
-//    @Override
-//    public boolean onOptionsItemSelected(MenuItem item) {
-//        switch (item.getItemId()) {
-//            case R.id.action_settings:
-//
-//                this.dialog = new DistanceDialog();
-//                this.dialog.setDistance(this.distance);
-//                this.dialog.show(this.getSupportFragmentManager(), "distanceDialog");
-//
-//                return true;
-//
-//            case R.id.action_test:
-//
-//                /*
-//                this.testDialog = new TestingDialog();
-//                this.testDialog.show(this.getSupportFragmentManager(), "testingDialog");
-//                this.testDialog.text("Getting path...");
-//                handler.postDelayed(waitRunnable, 1);
-//                bpNum = 0;
-//                IMaps vIMaps = new IMaps() {
-//                    @Override
-//                    public void onJSONRouteLoaded(ArrayList<LatLng> image1_6) throws IOException {
-//                        StringBuilder sb = new StringBuilder();
-//                        for(LatLng pos: image1_6)
-//                            sb.append(pos.latitude + ";" + pos.longitude + "\n");
-//                        FileHelper.write(MapsActivity.this, "path-v.txt", sb.toString(), true);
-//                        bpNum--;
-//                    }
-//                };
-//                IMaps hIMaps = new IMaps() {
-//                    @Override
-//                    public void onJSONRouteLoaded(ArrayList<LatLng> image1_6) throws IOException {
-//                        StringBuilder sb = new StringBuilder();
-//                        for(LatLng pos: image1_6)
-//                            sb.append(pos.latitude + ";" + pos.longitude + "\n");
-//                        FileHelper.write(MapsActivity.this, "path-h.txt", sb.toString(), true);
-//                        bpNum--;
-//                    }
-//                };
-//                IMaps dIMaps = new IMaps() {
-//                    @Override
-//                    public void onJSONRouteLoaded(ArrayList<LatLng> image1_6) throws IOException {
-//                        StringBuilder sb = new StringBuilder();
-//                        for(LatLng pos: image1_6)
-//                            sb.append(pos.latitude + ";" + pos.longitude + "\n");
-//                        FileHelper.write(MapsActivity.this, "path-d.txt", sb.toString(), true);
-//                        bpNum--;
-//                    }
-//                };
-//                try {
-//                    boolean reroute = false;
-//                    if(bpNum > 0) reroute = true;
-//                    if (!FileHelper.exists(this, "path-v.txt") || reroute) {
-//                        LatLng vStart = new LatLng(38.595900, -89.985198);
-//                        LatLng vEnd = new LatLng(38.506360, -89.984318);
-//                        RouteTask vRouteTask = new RouteTask(vIMaps, vStart, vEnd);
-//                        vRouteTask.execute();
-//                    }
-//                    if (!FileHelper.exists(this, "path-h.txt") || reroute) {
-//                        LatLng hStart = new LatLng(38.506380, -89.968063);
-//                        LatLng hEnd = new LatLng(38.504700, -89.851810);
-//                        RouteTask hRouteTask = new RouteTask(hIMaps, hStart, hEnd);
-//                        hRouteTask.execute();
-//                    }
-//                    if (!FileHelper.exists(this, "path-d.txt") || reroute) {
-//                        LatLng dStart = new LatLng(38.621889, -90.153827);
-//                        LatLng dEnd = new LatLng(38.555006, -90.077097);
-//                        RouteTask dRouteTask = new RouteTask(dIMaps, dStart, dEnd);
-//                        dRouteTask.execute();
-//                    }
-//                    String vRaw = FileHelper.read(this, "path-v.txt").trim();
-//                    String[] pairs = vRaw.split("\n");
-//                    ArrayList<LatLng> points = new ArrayList<>();
-//                    for(String data: pairs) {
-//                        String[] cols = data.split(";");
-//                        LatLng point = new LatLng(Double.parseDouble(cols[0]), Double.parseDouble(cols[1]));
-//                        points.add(point);
-//                    }
-//                    while(points.size() > 100)
-//                        points.remove((new Random()).nextInt((points.size()-2))+1);
-//                    String hRaw = FileHelper.read(this, "path-h.txt").trim();
-//                    String[] hPairs = hRaw.split("\n");
-//                    ArrayList<LatLng> hPoints = new ArrayList<>();
-//                    for(String data: hPairs) {
-//                        String[] cols = data.split(";");
-//                        LatLng point = new LatLng(Double.parseDouble(cols[0]), Double.parseDouble(cols[1]));
-//                        hPoints.add(point);
-//                    }
-//                    while(hPoints.size() > 100)
-//                        hPoints.remove((new Random()).nextInt((hPoints.size()-2))+1);
-//                    String dRaw = FileHelper.read(this, "path-d.txt").trim();
-//                    String[] vPairs = dRaw.split("\n");
-//                    ArrayList<LatLng> dPoints = new ArrayList<>();
-//                    for(String data: vPairs) {
-//                        String[] cols = data.split(";");
-//                        LatLng point = new LatLng(Double.parseDouble(cols[0]), Double.parseDouble(cols[1]));
-//                        dPoints.add(point);
-//                    }
-//                    while(dPoints.size() > 100)
-//                        dPoints.remove((new Random()).nextInt((dPoints.size()-2))+1);
-//                    //TestTask testTask = new TestTask(this, points, dPoints, hPoints);
-//                    //testTask.setStatusInterface(this);
-//                    //testTask.execute();
-//                } catch (Exception ex) {
-//                    this.testDialog.text(ex.getMessage());
-//                }
-//                //this.testDialog.dismiss();
-//                */
-//
-//                return true;
-//        }
-//        return super.onOptionsItemSelected(item);
-//    }
-//
-//    @Override
-//    public boolean onCreateOptionsMenu(Menu menu) {
-//        getMenuInflater().inflate(R.menu.menu, menu);
-//        return true;
-//    }
-//
-//    @Override
-//    public void onClick(DialogInterface dialog, int which) {
-//        switch (which) {
-//            case DialogInterface.BUTTON_POSITIVE:
-//                this.distance = (int) this.dialog.distance;
-//                break;
-//            case DialogInterface.BUTTON_NEGATIVE:
-//                dialog.dismiss();
-//                break;
-//        }
-//    }
-//
-//    @Override
-//    public void start() {
-//        this.myTestDialog = new MaterialDialog.Builder(this).content("Loading...")
-//                .cancelable(false)
-//                .show();
-//    }
-//
-//    @Override
-//    public void showStatus(String status) {
-//        this.myTestDialog.setContent(status);
-//    }
-//
-//    @Override
-//    public void showError(String error) {
-//        this.myTestDialog.setContent(error);
-//    }
-//
-//    @Override
-//    public void done() {
-//        this.myTestDialog.dismiss();
-//    }
-//}
-
-//import androidx.annotation.NonNull;
-//import androidx.annotation.Nullable;
-//import androidx.core.app.ActivityCompat;
-//import androidx.fragment.app.FragmentActivity;
-//
-//import android.annotation.TargetApi;
-//import android.app.AlertDialog;
-//import android.app.ProgressDialog;
-//import android.content.DialogInterface;
-//import android.content.Intent;
-//import android.content.pm.PackageManager;
-//import android.graphics.Color;
-//import android.image1_2.Location;
-//import android.os.Build;
-//import android.os.Bundle;
-//import android.util.Log;
-//import android.view.View;
-//import android.widget.Button;
-//import android.widget.EditText;
-//import android.widget.LinearLayout;
-//import android.widget.TextView;
-//import android.widget.Toast;
-//
-//import com.example.sightsee.R;
-//import com.example.sightsee.model.MapRoute;
-//import com.example.sightsee.utils.SearchDirection;
-//import com.example.sightsee.utils.SearchDirectionListener;
-//import com.google.android.gms.common.ConnectionResult;
-//import com.google.android.gms.common.GoogleApiAvailability;
-//import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
-//import com.google.android.gms.common.GooglePlayServicesRepairableException;
-//import com.google.android.gms.common.api.GoogleApiClient;
-//import com.google.android.gms.common.api.Status;
-//import com.google.android.gms.image1_2.LocationListener;
-//
-//import com.google.android.gms.image1_2.LocationRequest;
-//import com.google.android.gms.image1_2.LocationServices;
-//import com.google.android.gms.maps.CameraUpdate;
-//import com.google.android.gms.maps.CameraUpdateFactory;
-//import com.google.android.gms.maps.GoogleMap;
-//import com.google.android.gms.maps.OnMapReadyCallback;
-//import com.google.android.gms.maps.SupportMapFragment;
-//import com.google.android.gms.maps.model.BitmapDescriptorFactory;
-//import com.google.android.gms.maps.model.LatLng;
-//import com.google.android.gms.maps.model.LatLngBounds;
-//import com.google.android.gms.maps.model.Marker;
-//import com.google.android.gms.maps.model.MarkerOptions;
-//import com.google.android.gms.maps.model.Polyline;
-//import com.google.android.gms.maps.model.PolylineOptions;
-//
-//import com.google.android.libraries.places.api.Places;
-//import com.google.android.libraries.places.api.model.Place;
-//import com.google.android.libraries.places.api.net.PlacesClient;
-//import com.google.android.libraries.places.widget.Autocomplete;
-//import com.google.android.libraries.places.widget.AutocompleteActivity;
-//import com.google.android.libraries.places.widget.AutocompleteSupportFragment;
-//import com.google.android.libraries.places.widget.listener.PlaceSelectionListener;
-//import com.google.android.libraries.places.widget.model.AutocompleteActivityMode;
-//
-//import java.io.UnsupportedEncodingException;
-//import java.util.ArrayList;
-//import java.util.Arrays;
-//import java.util.List;
-//
-//import static android.Manifest.permission.ACCESS_COARSE_LOCATION;
-//import static android.Manifest.permission.ACCESS_FINE_LOCATION;
-//
-//public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks,
-//        GoogleApiClient.OnConnectionFailedListener, LocationListener, SearchDirectionListener {
-//
-//    private GoogleMap mMap;
-//    Location mLocation;
-//    GoogleApiClient mGoogleApiClient;
-//    private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
-//    private LocationRequest mLocationRequest;
-//    private long UPDATE_INTERVAL = 15000;  /* 15 secs */
-//    private long FASTEST_INTERVAL = 5000; /* 5 secs */
-//
-//    public boolean etOriginSelected =false ;
-//    public boolean etDestinationSelected =false;
-//
-//    private Button btnFindPath;
-////    private EditText etOrigin;
-////    private EditText etDestination;
-//    private List<Marker> originMarkers = new ArrayList<>();
-//    private List<Marker> destinationMarkers = new ArrayList<>();
-//    private List<Polyline> polylinePaths = new ArrayList<>();
-//    private ProgressDialog progressDialog;
-//    private LinearLayout infoLayout;
-//    private ArrayList<String> permissionsToRequest;
-//    private ArrayList permissionsRejected = new ArrayList();
-//    private ArrayList permissions = new ArrayList();
-//
-//    private AutocompleteSupportFragment etOrigin;
-//    private AutocompleteSupportFragment etDestination;
-//    private String origin;
-//    private String destination;
-//
-//    private final static int ALL_PERMISSIONS_RESULT = 101;
-//    public static final int PLACE_AUTOCOMPLETE_FROM_PLACE_REQUEST_CODE=1;
-//    public static final int PLACE_AUTOCOMPLETE_TO_PLACE_REQUEST_CODE=2;
-//
-//    @Override
-//    protected void onCreate(Bundle savedInstanceState) {
-//        super.onCreate(savedInstanceState);
-//        setContentView(R.layout.activity_maps);
-//
-//        btnFindPath = (Button) findViewById(R.id.btnFindPath);
-////        etOrigin = (EditText) findViewById(R.id.etOrigin);
-////        etDestination = (EditText) findViewById(R.id.etDestination);
-//
-//        etOrigin = (AutocompleteSupportFragment)
-//                getSupportFragmentManager().findFragmentById(R.id.etOrigin);
-//
-//        etDestination = (AutocompleteSupportFragment)
-//                getSupportFragmentManager().findFragmentById(R.id.etDestination);
-//        infoLayout = findViewById(R.id.infoLayout);
-//
-//
-//        // Initialize the Origin AutocompleteSupportFragment.
-//
-//
-//        etOrigin.setPlaceFields(Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG));
-//
-//        etOrigin.setOnPlaceSelectedListener(new PlaceSelectionListener() {
-//                                                            @Override
-//                                                            public void onPlaceSelected(Place image2_1) {
-//                                                                // TODO: Get info about the selected image2_1.
-//                                                                etOrigin.setText(image2_1.getName());
-//                                                                origin = image2_1.getId();
-//                                                                Log.i("Success", "Place: " + image2_1.getAddress() + ", " + image2_1.getLatLng());
-//                                                                Log.i("Success", origin);
-//                                                            }
-//            @Override
-//            public void onError(Status status) {
-//                // TODO: Handle the error.
-//                Log.i("error", "An error occurred: " + status);
-//            }
-//        });
-//
-//
-//
-//        etDestination.setPlaceFields(Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG));
-//
-//        etDestination.setOnPlaceSelectedListener(new PlaceSelectionListener() {
-//            @Override
-//            public void onPlaceSelected(Place image2_1) {
-//                // TODO: Get info about the selected image2_1.
-//                etDestination.setText(image2_1.getAddress());
-//                destination = image2_1.getId();
-//                Log.i("Success", "Place: " + image2_1.getName() + ", " + image2_1.getId());
-//                Log.i("Success", destination);
-//            }
-//            @Override
-//            public void onError(Status status) {
-//                // TODO: Handle the error.
-//                Log.i("error", "An error occurred: " + status);
-//            }
-//        });
-//
-//
-////        etOrigin.setOnClickListener(new View.OnClickListener() {
-////            @Override
-////            public void onClick(View v) {
-////                findPlace();
-////            }
-////        });
-////        etDestination.setOnClickListener(new View.OnClickListener() {
-////            @Override
-////            public void onClick(View v) {
-////                findPlace2();
-////            }
-////        });
-//
-//        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-//        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-//                .findFragmentById(R.id.map);
-//        mapFragment.getMapAsync(this);
-//
-//        String res = getString(R.string.google_api_key);
-//        Places.initialize(getApplicationContext(), res);
-//
-//        PlacesClient placesClient = Places.createClient(this);
-//
-//
-//
-//        btnFindPath.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                sendRequest();
-//            }
-//        });
-//
-//
-//
-//        permissions.add(ACCESS_FINE_LOCATION);
-//        permissions.add(ACCESS_COARSE_LOCATION);
-//
-//        permissionsToRequest = findUnAskedPermissions(permissions);
-//        //get the permissions we have asked for before but are not granted..
-//        //we will store this in a global list to access later.
-//
-//
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-//
-//
-//            if (permissionsToRequest.size() > 0) {
-//                requestPermissions(permissionsToRequest.toArray(new String[permissionsToRequest.size()]), ALL_PERMISSIONS_RESULT);
-//            }
-//        }
-//
-//
-//        mGoogleApiClient = new GoogleApiClient.Builder(this)
-//                .addApi(LocationServices.API)
-//                .addConnectionCallbacks(this)
-//                .addOnConnectionFailedListener(this)
-//                .build();
-//
-//
-//        connectClient();
-//    }
-//
-////    private void findPlace2() {
-//////        Toast.makeText(this, "I'm here too", Toast.LENGTH_SHORT).show();
-////        List<Place.Field> fields = Arrays.asList(Place.Field.ID, Place.Field.NAME);
-////            Intent intent = new Autocomplete
-////                    .IntentBuilder(AutocompleteActivityMode.OVERLAY, fields)
-////                    .build(MapsActivity.this);
-////            startActivityForResult(intent, PLACE_AUTOCOMPLETE_TO_PLACE_REQUEST_CODE);
-////
-////    }
-////
-////    private void findPlace() {
-//////        Toast.makeText(this, "I'm here", Toast.LENGTH_SHORT).show();
-////        List<Place.Field> fields = Arrays.asList(Place.Field.ID, Place.Field.NAME);
-////
-////            Intent intent = new Autocomplete
-////                    .IntentBuilder(AutocompleteActivityMode.OVERLAY, fields)
-////                    .build(MapsActivity.this);
-////            startActivityForResult(intent, PLACE_AUTOCOMPLETE_FROM_PLACE_REQUEST_CODE);
-////    }
-//
-////    @Override
-////    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-//////        Toast.makeText(this, "I'm here", Toast.LENGTH_SHORT).show();
-////        if (requestCode == PLACE_AUTOCOMPLETE_FROM_PLACE_REQUEST_CODE) {
-////            if (resultCode == RESULT_OK) {
-////                Toast.makeText(this, "I'm here", Toast.LENGTH_SHORT).show();
-////                Place image2_1 = Autocomplete.getPlaceFromIntent(data);
-////                String address = (String) image2_1.getAddress();
-////                etOrigin.setText(address, TextView.BufferType.EDITABLE);
-////                } else if (resultCode == AutocompleteActivity.RESULT_ERROR) {
-////                // TODO: Handle the error.
-////                Status status = Autocomplete.getStatusFromIntent(data);
-////                Log.d("error", status.getStatusMessage());
-////            } else if (resultCode == RESULT_CANCELED) {
-////                // The user canceled the operation.
-////            }
-////            } else if (requestCode == PLACE_AUTOCOMPLETE_TO_PLACE_REQUEST_CODE) {
-////            if (resultCode == RESULT_OK) {
-////                Place image2_1 = Autocomplete.getPlaceFromIntent(data);
-////                String address = (String) image2_1.getAddress();
-////                etDestination.setText(address, TextView.BufferType.EDITABLE);
-////            } else if (resultCode == AutocompleteActivity.RESULT_ERROR) {
-////                // TODO: Handle the error.
-////                Status status = Autocomplete.getStatusFromIntent(data);
-////                Log.d("error", status.getStatusMessage());
-////            } else if (resultCode == RESULT_CANCELED) {
-////                // The user canceled the operation.
-////            }
-////
-////        }
-////    }
-//
-//    private void sendRequest() {
-//        Toast.makeText(this, "I'm here", Toast.LENGTH_SHORT).show();
-////        String origin = etOrigin.toString();
-////        String destination = etDestination.toString();
-//        if (origin.isEmpty()) {
-//            Toast.makeText(this, "Please enter origin address!", Toast.LENGTH_SHORT).show();
-//            return;
-//        }
-//        if (destination.isEmpty()) {
-//            Toast.makeText(this, "Please enter destination address!", Toast.LENGTH_SHORT).show();
-//            return;
-//        }
-//
-//        try {
-//            new SearchDirection( this, origin, destination).execute();
-//            infoLayout.setVisibility(View.VISIBLE);
-//        } catch (UnsupportedEncodingException e) {
-//            e.printStackTrace();
-//        }
-//    }
-//
-//    @Override
-//    public void onMapReady(GoogleMap googleMap) {
-//        mMap = googleMap;
-//
-//        if (ActivityCompat.checkSelfPermission(this, ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-//            return;
-//        }
-//        mMap.setMyLocationEnabled(true);
-//    }
-//
-//
-//
-//
-//    @Override
-//    public void onDirectionFinderStart() {
-//
-//        if (originMarkers != null) {
-//            for (Marker marker : originMarkers) {
-//                marker.remove();
-//            }
-//        }
-//
-//        if (destinationMarkers != null) {
-//            for (Marker marker : destinationMarkers) {
-//                marker.remove();
-//            }
-//        }
-//
-//        if (polylinePaths != null) {
-//            for (Polyline polyline : polylinePaths) {
-//                polyline.remove();
-//            }
-//        }
-//    }
-//
-//    @Override
-//    public void onDirectionFinderSuccess(List<MapRoute> mapRoutes) {
-//        polylinePaths = new ArrayList<>();
-//        originMarkers = new ArrayList<>();
-//        destinationMarkers = new ArrayList<>();
-//
-//
-//        for (MapRoute mapRoute : mapRoutes) {
-//            ((TextView) findViewById(R.id.tvDuration)).setText(mapRoute.mapDuration.txtDuration);
-//            ((TextView) findViewById(R.id.tvDistance)).setText(mapRoute.mapDistance.txtDistance);
-//
-//            originMarkers.add(mMap.addMarker(new MarkerOptions()
-////                   use for default marker image on map
-//                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
-////                    use for show custom image on map
-////                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.start_blue))
-//                    .title(mapRoute.startAddress)
-//                    .position(mapRoute.startLocation)));
-//            destinationMarkers.add(mMap.addMarker(new MarkerOptions()
-//                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
-//                    .title(mapRoute.endAddress)
-//                    .position(mapRoute.endLocation)));
-//
-//            PolylineOptions polylineOptions = new PolylineOptions().
-//                    geodesic(true).
-//                    color(Color.rgb(82, 219, 255)).
-//                    width(10);
-//
-//            for (int i = 0; i < mapRoute.points.size(); i++)
-//                polylineOptions.add(mapRoute.points.get(i));
-//
-//            polylinePaths.add(mMap.addPolyline(polylineOptions));
-//        }
-//
-//        LatLngBounds.Builder builder = new LatLngBounds.Builder();
-//        for (Marker marker : originMarkers) {
-//            builder.include(marker.getPosition());
-//        }
-//
-//        for (Marker marker : destinationMarkers) {
-//            builder.include(marker.getPosition());
-//        }
-//        LatLngBounds bounds = builder.build();
-//
-//        int padding = 20; // offset from edges of the map in pixels
-//        CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, padding);
-//
-//        mMap.moveCamera(cu);
-//    }
-//
-//
-//    public void connectClient()
-//    {
-//        mGoogleApiClient = new GoogleApiClient.Builder(this)
-//                .addApi(LocationServices.API)
-//                .addConnectionCallbacks(this)
-//                .addOnConnectionFailedListener(this)
-//                .build();
-//    }
-//
-//    private ArrayList findUnAskedPermissions(ArrayList wanted) {
-//        ArrayList result = new ArrayList();
-//
-//        for (Object perm : wanted) {
-//            if (!hasPermission((String) perm)) {
-//                result.add(perm);
-//            }
-//        }
-//
-//        return result;
-//    }
-//
-//    @Override
-//    protected void onStart() {
-//        super.onStart();
-//        if (mGoogleApiClient != null) {
-//            mGoogleApiClient.connect();
-//        }
-//    }
-//
-//    @Override
-//    protected void onResume() {
-//        super.onResume();
-//
-//        if (!checkPlayServices()) {
-//            Toast.makeText(getApplicationContext(),"Please install google play services",Toast.LENGTH_LONG).show();
-//        }
-//    }
-//
-//    @Override
-//    public void onConnected(@Nullable Bundle bundle) {
-//
-//
-//            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-//                // TODO: Consider calling
-//                //    ActivityCompat#requestPermissions
-//                // here to request the missing permissions, and then overriding
-//                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-//                //                                          int[] grantResults)
-//                // to handle the case where the user grants the permission. See the documentation
-//                // for ActivityCompat#requestPermissions for more details.
-//                return;
-//            }
-//            mLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-//
-//            LatLng latLng = new LatLng(mLocation.getLatitude(), mLocation.getLongitude());
-//            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 12);
-//            mMap.animateCamera(cameraUpdate);
-//
-//            startLocationUpdates();
-//    }
-//
-//    @Override
-//    public void onConnectionSuspended(int i) {
-//
-//    }
-//
-//    @Override
-//    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-//
-//    }
-//
-//    @Override
-//    public void onLocationChanged(Location image1_2) {
-//
-//
-//    }
-//
-//    private boolean checkPlayServices() {
-//        GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
-//        int resultCode = apiAvailability.isGooglePlayServicesAvailable(this);
-//        if (resultCode != ConnectionResult.SUCCESS) {
-//            if (apiAvailability.isUserResolvableError(resultCode)) {
-//                apiAvailability.getErrorDialog(this, resultCode, PLAY_SERVICES_RESOLUTION_REQUEST)
-//                        .show();
-//            } else
-//                finish();
-//
-//            return false;
-//        }
-//        return true;
-//    }
-//
-//    protected void startLocationUpdates() {
-//        mLocationRequest = new LocationRequest();
-//        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-//        mLocationRequest.setInterval(UPDATE_INTERVAL);
-//        mLocationRequest.setFastestInterval(FASTEST_INTERVAL);
-//        if (ActivityCompat.checkSelfPermission(this, ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-//            Toast.makeText(getApplicationContext(), "Enable Permissions", Toast.LENGTH_LONG).show();
-//        }
-//
-//        LocationServices.FusedLocationApi.requestLocationUpdates(
-//                mGoogleApiClient, mLocationRequest, this);
-//
-//
-//    }
-//
-//    private boolean hasPermission(String permission) {
-//        if (canMakeSmores()) {
-//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-//                return (checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED);
-//            }
-//        }
-//        return true;
-//    }
-//
-//    private boolean canMakeSmores() {
-//        return (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1);
-//    }
-//
-//
-//    @TargetApi(Build.VERSION_CODES.M)
-//    @Override
-//    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-//
-//        switch (requestCode) {
-//
-//            case ALL_PERMISSIONS_RESULT:
-//                for (String perms : permissionsToRequest) {
-//                    if (!hasPermission(perms)) {
-//                        permissionsRejected.add(perms);
-//                    }
-//                }
-//
-//                if (permissionsRejected.size() > 0) {
-//
-//
-//                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-//                        if (shouldShowRequestPermissionRationale((String) permissionsRejected.get(0))) {
-//                            showMessageOKCancel("These permissions are mandatory for the application. Please allow access.",
-//                                    new DialogInterface.OnClickListener() {
-//                                        @Override
-//                                        public void onClick(DialogInterface dialog, int which) {
-//                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-//                                                requestPermissions((String[]) permissionsRejected.toArray(new String[permissionsRejected.size()]), ALL_PERMISSIONS_RESULT);
-//                                            }
-//                                        }
-//                                    });
-//                            return;
-//                        }
-//                    }
-//
-//                }
-//
-//                break;
-//        }
-//
-//    }
-//
-//    private void showMessageOKCancel(String message, DialogInterface.OnClickListener okListener) {
-//        new AlertDialog.Builder(MapsActivity.this)
-//                .setMessage(message)
-//                .setPositiveButton("OK", okListener)
-//                .setNegativeButton("Cancel", null)
-//                .create()
-//                .show();
-//    }
-//
-//    @Override
-//    protected void onDestroy() {
-//        super.onDestroy();
-//        stopLocationUpdates();
-//    }
-//
-//
-//    public void stopLocationUpdates()
-//    {
-//        if (mGoogleApiClient.isConnected()) {
-//            LocationServices.FusedLocationApi
-//                    .removeLocationUpdates(mGoogleApiClient, this);
-//            mGoogleApiClient.disconnect();
-//        }
-//    }
-//}
